@@ -4,9 +4,18 @@ Lettore PDF leggero e open source: il testo del documento si legge come un ebook
 regolabile, evidenziazioni e note. Il PDF originale non viene mai modificato: annotazioni e
 posizione di lettura vivono in un file JSON separato, portabile su altri dispositivi.
 
-**Stato: Fase 0 (spec-driven).** Questa è la shell installabile dell'app: si installa come
-PWA e funziona offline. L'apertura dei PDF e le annotazioni arrivano con le fasi successive
-del [piano di implementazione](docs/piano_implementazione_lettore_pdf.md).
+**Stato: Fase 1 (spike tecnico, non ancora lettore fluido).** La PWA apre un PDF locale
+in sola lettura e prova la persistenza di una nota e una pagina numerica in un JSON
+separato. Non ci sono ancora ricostruzione del testo, evidenziazioni o navigazione PDF.
+Il formato dati `fluido/file-spike v1` è sperimentale, non il formato definitivo MVP.
+
+La scrittura diretta è disponibile solo se il browser espone le API e l'utente concede i
+permessi; altrove importazione/download sono espliciti, con avviso prima dell'uso.
+Cache e handle sono salvati in IndexedDB quando disponibile. La cache non sostituisce il
+file. Gli aggiornamenti PWA vengono bloccati quando ci sono dati non ancora conservati.
+
+Vedere [ADR-001](docs/ADR-001-ciclo-file-pwa.md) per matrice testata, limiti e checklist
+da eseguire sui dispositivi reali. Il gate della Fase 1 è ancora aperto per quelle prove.
 
 ## Requisiti
 
@@ -31,6 +40,23 @@ Nota: il file `.npmrc` di progetto imposta `legacy-peer-deps=true` per aggirare 
 noto di npm 10.8.x nella risoluzione dei peer di `@preact/preset-vite`; così l'installazione
 è identica in locale e in CI, senza flag manuali. I peer effettivi sono tutti soddisfatti
 (una sola copia di Vite 6) e `npm audit` è pulito.
+
+## Eseguire le prove
+
+```sh
+npm ci
+npx playwright install --with-deps chromium firefox webkit
+npm run build
+npm test
+npm run e2e
+```
+
+Gli E2E eseguono tre motori desktop in Linux; il viewport stretto non è una
+certificazione dei dispositivi mobili. L'harness nativo Chromium usa veri handle OPFS
+con picker sostituiti, non file esterni o finestre OS.
+
+Per provare il sito già pubblicato (solo con file sintetici di test):
+`E2E_BASE_URL=https://proud-desert-027a07a10.1.azurestaticapps.net npm run e2e`.
 
 ## Struttura
 

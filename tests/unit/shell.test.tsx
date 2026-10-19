@@ -6,13 +6,12 @@ describe("Shell dell'applicazione (Fase 0, AC-32)", () => {
   it("mostra il nome dell'app e lo stato di libreria vuota", () => {
     const html = renderToString(<App />);
     expect(html).toContain('Fluido');
-    expect(html).toContain('La libreria è vuota');
+    expect(html).toContain('Il tuo PDF, i tuoi file');
   });
 
   it('dichiara la fase corrente senza promettere funzioni assenti', () => {
     const html = renderToString(<App />);
-    expect(html).toContain('Fase 0');
-    // Nessun controllo di apertura PDF: la funzione non è ancora implementata.
-    expect(html).not.toMatch(/apri (un )?pdf/i);
+    expect(html).toContain('Fase 1');
+    expect(html).toContain('verifica tecnica');
   });
 });

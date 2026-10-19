@@ -1,7 +1,8 @@
 # storage — adattatori di persistenza
 
-Adattatori per l'accesso ai file e ai dati dell'app. Arrivano dalla Fase 1 e Fase 5
-del piano di implementazione.
+Adattatori per l'accesso ai file e ai dati dell'app. Nella Fase 1 sono implementati
+`files.ts` (picker/hash/download), `cache.ts` (IndexedDB) e `file-session.ts`
+(ciclo e coda di scrittura). La persistenza definitiva arriva nella Fase 5.
 
 Adattatori previsti:
 

@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **da approvare** · Data: 19/10/2026
+Stato: **Fasi 0 e 1 autorizzate; gate dispositivi reali aperto** · Data: 19/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -87,17 +87,24 @@ File `<nomepdf>.annotations.json`, unico per documento:
 - Shell PWA installabile (manifest, service worker, funzionamento offline della shell).
 - **Uscita**: app vuota installabile da URL Azure su desktop, Android e iOS.
 
-**Stato: completata localmente (19/10/2026); gate finale aperto.** Progetto "Fluido" in
+**Stato: completata localmente e pubblicata su Azure; gate installazione dispositivi aperto.** Progetto "Fluido" in
 `pdf-fluid-reader/`: lint, tipi, 5 test unitari e 3 test E2E (incluso offline) verdi; build con
 43 KiB di precache; `npm audit` pulito; licenze dipendenze verificate (MIT/Apache-2.0,
-compatibili con MIT); workflow CI e deploy Azure pronti. **Restano a carico dell'utente,
-e chiudono la fase**: pubblicare il repository su GitHub, creare la risorsa Static Web App
-con il token di deploy, poi verificare l'installazione della PWA su desktop, Android e iOS
-reali. Successo: Fase 1 (spike sul ciclo del file).
+compatibili con MIT). Repository GitHub e risorsa Azure sono collegati e il deploy è
+stato verificato. Resta da verificare l'installazione della PWA sui dispositivi reali.
+La Fase 1 è stata successivamente autorizzata dall'utente.
 
 ### Fase 1 – Spike tecnico sul ciclo del file (≈ 1 settimana) – gate
 
 Verifica sulle piattaforme reali di: apertura PDF, creazione/selezione del file associato, scrittura automatica, riapertura con permessi.
+
+**Stato: spike implementato e verificato automaticamente (19/10/2026); gate manuale aperto.**
+Nota/pagina sperimentali, SHA-256, handle e cache in IndexedDB, scrittura dopo 700 ms,
+ricollegamento esplicito, fallback import/download, errori e conflitti.
+30 test unitari e 25 casi browser passati su Chromium/Firefox/WebKit; 2 skip intenzionali.
+Il test di handle/stream reali usa OPFS e picker sostituiti, non file esterni del dispositivo.
+Matrice e checklist: [ADR-001](ADR-001-ciclo-file-pwa.md). Non equivale all'approvazione
+del gate su desktop/Android/iOS reali. Il formato `fluido/file-spike v1` non è lo schema MVP.
 
 - Chromium desktop: `showOpenFilePicker` / `showSaveFilePicker`, handle salvati in IndexedDB, richiesta permesso alla riapertura.
 - Android, iOS, Firefox, Safari: fallback import + download.

@@ -1,7 +1,9 @@
 # core — motore di lettura (dominio puro)
 
 Modulo di dominio del lettore: ricostruzione del testo, modello di lettura, ancora delle
-annotazioni e schema del file associato. Arriva dalla Fase 2 del piano di implementazione.
+annotazioni e schema del file associato. Il motore arriva dalla Fase 2 del piano.
+Nella Fase 1 `file-spike.ts` definisce esclusivamente il formato sperimentale
+della prova e la sua validazione, non lo schema definitivo delle annotazioni.
 
 ## Regola architetturale (verificata da ESLint)
 

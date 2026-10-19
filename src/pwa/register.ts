@@ -12,6 +12,13 @@ export function registerPwa() {
   const updateSW = registerSW({
     onNeedRefresh() {
       showUpdateBanner(() => {
+        const allowed = window.dispatchEvent(
+          new Event('fluido:before-update', { cancelable: true }),
+        );
+        if (!allowed) {
+          window.alert('Conserva prima le modifiche: attendi il salvataggio o scarica il JSON.');
+          return;
+        }
         void updateSW(true);
       });
     },
