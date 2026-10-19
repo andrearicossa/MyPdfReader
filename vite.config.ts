@@ -6,6 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Il manifest è un file statico in public/ (linkato da index.html) per restare
 // ispezionabile e testabile; il service worker è generato da Workbox.
 export default defineConfig({
+  // Base relativa: l'app è servita dalla radice su Azure Static Web Apps e la
+  // base relativa mantiene validi i riferimenti anche in anteprima.
+  base: './',
   plugins: [
     preact(),
     VitePWA({
