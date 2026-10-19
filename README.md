@@ -105,8 +105,8 @@ i test Playwright non sostituiscono la prova manuale sui dispositivi.
 
 ## Licenza
 
-MIT — vedi [LICENSE](LICENSE). Il titolare del copyright nel testo è un placeholder da
-completare con il nome scelto prima della pubblicazione pubblica del repository.
+MIT — vedi [LICENSE](LICENSE). Copyright (c) 2026 andrearicossa, come indicato
+nella licenza originale del repository.
 
 Licenze delle dipendenze dirette (verificate con la versione installata, tutte compatibili
 con MIT): Preact, Vite, vite-plugin-pwa, Workbox, Vitest, ESLint, Prettier e
