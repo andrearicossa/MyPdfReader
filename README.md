@@ -86,6 +86,10 @@ consente di riutilizzare il motore in futuro con Tauri o provider cloud senza ri
    `https://<nome-app>.azurestaticapps.net` e ogni pull request riceverà un ambiente di
    anteprima automatico.
 
+   Nota: se il portale Azure genera un proprio workflow in `.github/workflows/`, tenerne
+   **uno solo**: eliminare quello generato dal portale e mantenere quello del repository,
+   che include lint, test e la pubblicazione della build già verificata.
+
 Il workflow CI separato (`.github/workflows/ci.yml`) esegue su ogni push e pull request:
 formato, lint, tipi, test unitari, build e test E2E (incluso il test offline).
 
