@@ -1,0 +1,68 @@
+/* Palette "carta e inchiostro": superfici calde, testo scuro, accento petrolio.
+   Il tema scuro è pensato per la lettura notturna. */
+
+:root,
+[data-theme='light'] {
+  --color-bg: #f7f5f0;
+  --color-surface: #fbfaf7;
+  --color-surface-offset: #efece5;
+  --color-border: #ddd8cd;
+  --color-divider: #e6e2d9;
+  --color-text: #26241e;
+  --color-text-muted: #6f6c63;
+  --color-text-faint: #a8a496;
+  --color-text-inverse: #f9f8f4;
+  --color-primary: #01696f;
+  --color-primary-hover: #0c4e54;
+  --color-primary-highlight: #d3e2de;
+  --shadow-md: 0 4px 12px rgb(38 36 30 / 0.08);
+  --shadow-lg: 0 12px 32px rgb(38 36 30 / 0.12);
+
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+}
+
+[data-theme='dark'] {
+  --color-bg: #161512;
+  --color-surface: #1c1b18;
+  --color-surface-offset: #201f1b;
+  --color-border: #3a3833;
+  --color-divider: #262522;
+  --color-text: #d6d3ca;
+  --color-text-muted: #8f8c82;
+  --color-text-faint: #5f5c54;
+  --color-text-inverse: #26241e;
+  --color-primary: #4f98a3;
+  --color-primary-hover: #77b6c0;
+  --color-primary-highlight: #26333a;
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.4);
+}
+
+/* Sistema di scala tipografica e spaziatura (base 4px). */
+:root {
+  --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+  --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  --content-narrow: 42rem;
+}

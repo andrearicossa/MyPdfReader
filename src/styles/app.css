@@ -1,0 +1,135 @@
+/* Shell dell'applicazione. */
+
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.wordmark-sub {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition:
+    color var(--transition-interactive),
+    background var(--transition-interactive);
+}
+
+.theme-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface-offset);
+}
+
+.app-main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-6);
+}
+
+.empty-state {
+  max-width: var(--content-narrow);
+  text-align: center;
+}
+
+.empty-icon {
+  margin: 0 auto var(--space-6);
+  color: var(--color-text-faint);
+}
+
+.empty-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+
+.empty-text {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-8);
+}
+
+.roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-faint);
+}
+
+.roadmap li::before {
+  content: '— ';
+}
+
+.app-footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-divider);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+.update-banner {
+  position: fixed;
+  inset-inline: var(--space-4);
+  bottom: var(--space-4);
+  margin-inline: auto;
+  max-width: var(--content-narrow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+}
+
+.update-banner button {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  transition: background var(--transition-interactive);
+}
+
+.update-banner button:hover {
+  background: var(--color-primary-hover);
+}
+
+@media (max-width: 30rem) {
+  .update-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+}
