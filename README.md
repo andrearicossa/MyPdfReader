@@ -77,18 +77,19 @@ consente di riutilizzare il motore in futuro con Tauri o provider cloud senza ri
    - Preset di build: **Custom**
    - Posizione app: `/`
    - Percorso output: `dist`
-3. Il portale genera un deployment token: copiarlo da
-   _Gestione token di distribuzione_ e aggiungerlo in GitHub come secret
-   `AZURE_STATIC_WEB_APPS_API_TOKEN` (Settings → Secrets and variables → Actions).
+3. Il portale ha creato il secret GitHub
+   `AZURE_STATIC_WEB_APPS_API_TOKEN_PROUD_DESERT_027A07A10`, già referenziato dal workflow.
+   Non copiare il token nel codice o nella documentazione.
 4. Il workflow builda e testa il progetto (lint, tipi, test, build), poi pubblica la build
    già pronta con `skip_app_build: true`: Azure non ricompila nulla e ciò che viene
    pubblicato è esattamente ciò che i test hanno verificato. L'app sarà raggiungibile su
    `https://<nome-app>.azurestaticapps.net` e ogni pull request riceverà un ambiente di
    anteprima automatico.
 
-   Nota: se il portale Azure genera un proprio workflow in `.github/workflows/`, tenerne
-   **uno solo**: eliminare quello generato dal portale e mantenere quello del repository,
-   che include lint, test e la pubblicazione della build già verificata.
+   Il workflow di deploy unico è
+   `.github/workflows/azure-static-web-apps-proud-desert-027a07a10.yml`: mantiene il nome
+   generato dal portale, con i controlli di qualità integrati. Il vecchio workflow generico
+   è stato rimosso. È possibile avviare il deploy anche manualmente dalla scheda Actions.
 
 Il workflow CI separato (`.github/workflows/ci.yml`) esegue su ogni push e pull request:
 formato, lint, tipi, test unitari, build e test E2E (incluso il test offline).
