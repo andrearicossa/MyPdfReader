@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { simplePdf } from '../fixtures/pdf-corpus.mjs';
 
-const pdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF\n');
+const pdf = simplePdf();
 const upload = { name: 'prova.pdf', mimeType: 'application/pdf', buffer: pdf };
 
 test.beforeEach(async ({ page }) => {
@@ -40,6 +41,8 @@ test('PDF invariato, download e import su contesto pulito (AC-02, AC-18, AC-20, 
   const other = await context.newPage();
   await other.goto('/');
   await other.getByTestId('input-pdf').setInputFiles({ ...upload, name: 'rinominato.pdf' });
+  await expect(other.getByTestId('button-open-pdf')).toBeEnabled();
+  await expect(other.getByTestId('text-pdf-name')).toHaveText('rinominato.pdf');
   await other.getByTestId('input-json').setInputFiles(path!);
   await expect(other.getByTestId('input-note')).toHaveValue(
     'La mia nota <script>test</script>\nCaffè 日本語',

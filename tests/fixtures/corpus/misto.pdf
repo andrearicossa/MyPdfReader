@@ -1,0 +1,53 @@
+%PDF-1.7
+%Fluido
+1 0 obj
+<</Type /Catalog /Pages 2 0 R>>
+endobj
+2 0 obj
+<</Type /Pages /Count 2 /Kids [5 0 R 7 0 R]>>
+endobj
+3 0 obj
+<</Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding>>
+endobj
+4 0 obj
+<</Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /ASCIIHexDecode /Length 25>>
+stream
+01696f4f98a3edc982e5b96f>
+endstream
+endobj
+5 0 obj
+<</Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Rotate 0 /Resources <</Font <</F1 3 0 R>> /XObject <</Im1 4 0 R>>>> /Contents 6 0 R>>
+endobj
+6 0 obj
+<< /Length 77>>
+stream
+BT /F1 12 Tf 1 0 0 1 52 700 Tm (Pagina testuale semplice e leggibile.) Tj ET
+
+endstream
+endobj
+7 0 obj
+<</Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Rotate 0 /Resources <</Font <</F1 3 0 R>> /XObject <</Im1 4 0 R>>>> /Contents 8 0 R>>
+endobj
+8 0 obj
+<< /Length 33>>
+stream
+q 480 0 0 700 52 80 cm /Im1 Do Q
+
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000017 00000 n 
+0000000064 00000 n 
+0000000125 00000 n 
+0000000220 00000 n 
+0000000410 00000 n 
+0000000564 00000 n 
+0000000690 00000 n 
+0000000844 00000 n 
+trailer
+<</Size 9 /Root 1 0 R>>
+startxref
+926
+%%EOF

@@ -11,6 +11,8 @@ import {
   type LocalHandle,
 } from '../storage/files';
 import { workCache } from '../storage/cache';
+import { EnginePanel } from './EnginePanel';
+import type { DocumentReader } from '../pdf/document-reader';
 
 export function FileWorkbench() {
   const [state, setState] = useState<FileState>();
@@ -24,6 +26,8 @@ export function FileWorkbench() {
   const jsonInput = useRef<HTMLInputElement>(null);
   const [pdfUrl, setPdfUrl] = useState('');
   const pdfUrlRef = useRef('');
+  const [reader, setReader] = useState<DocumentReader>();
+  const readerRef = useRef<DocumentReader>();
 
   useEffect(() => {
     setNative(!!pickers().open && !!pickers().save);
@@ -51,6 +55,7 @@ export function FileWorkbench() {
       window.removeEventListener('beforeunload', protect);
       window.removeEventListener('fluido:before-update', allowUpdate);
       if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+      void readerRef.current?.close().catch(() => {});
     };
   }, []);
 
@@ -74,6 +79,9 @@ export function FileWorkbench() {
 
   const openPdf = async (file: File, handle?: LocalHandle) => {
     const document = await inspectPdf(file);
+    const { DocumentReader } = await import('../pdf/document-reader');
+    // Validazione del parser prima di sostituire una sessione di lavoro.
+    const opened = await DocumentReader.open(file);
     // Un file non valido non chiude né sostituisce la sessione corrente.
     await session.current?.close();
     unsubscribe.current?.();
@@ -85,6 +93,9 @@ export function FileWorkbench() {
     pdfUrlRef.current = URL.createObjectURL(file);
     setPdfUrl(pdfUrlRef.current);
     setLastPdf(handle);
+    void readerRef.current?.close().catch(() => {});
+    readerRef.current = opened;
+    setReader(opened);
   };
 
   const choosePdf = () => {
@@ -121,11 +132,12 @@ export function FileWorkbench() {
   return (
     <section class="workbench" aria-labelledby="workbench-title">
       <div class="workbench-intro">
-        <p class="eyebrow">FASE 1 · PROVA DI PERSISTENZA</p>
+        <p class="eyebrow">FASE 2 · ESTRAZIONE E RICOSTRUZIONE</p>
         <h1 id="workbench-title">Il tuo PDF, i tuoi file</h1>
         <p class="intro-copy">
           Apri un PDF e prova a conservare una nota e una pagina in un JSON separato. Questa è una
-          verifica tecnica: lettura fluida ed evidenziazioni arriveranno nelle prossime fasi.
+          verifica tecnica: ora puoi controllare il testo ricostruito e le figure. La vista di
+          lettura completa ed evidenziazioni arriveranno nelle prossime fasi.
         </p>
       </div>
 
@@ -181,6 +193,11 @@ export function FileWorkbench() {
         )}
       </div>
 
+      {busy && (
+        <p role="status" aria-live="polite">
+          Operazione locale in corso…
+        </p>
+      )}
       <input
         ref={pdfInput}
         type="file"
@@ -213,6 +230,7 @@ export function FileWorkbench() {
           {error}
         </p>
       )}
+      {reader && <EnginePanel key={pdfUrl} reader={reader} originalUrl={pdfUrl} />}
       {state ? (
         <div class="workspace-grid">
           <div class="document-panel">
@@ -374,7 +392,11 @@ export function FileWorkbench() {
         <div class="start-instructions">
           <h2>Come eseguire la prova</h2>
           <ol>
-            <li>Apri un PDF locale e crea o importa il suo JSON.</li>
+            <li>Apri un PDF locale con un layout semplice, a colonna singola.</li>
+            <li>
+              Controlla il testo ricostruito, mostra le figure e confronta la pagina originale.
+            </li>
+            <li>Per la prova di persistenza, crea o importa un JSON separato.</li>
             <li>Modifica la nota e la pagina di prova.</li>
             <li>Attendi la conferma di scrittura, oppure scarica il JSON aggiornato.</li>
             <li>Ricarica l’app e seleziona gli stessi file per controllare il ripristino.</li>

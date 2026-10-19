@@ -4,6 +4,9 @@
     "exclude": ["/assets/*", "/icons/*", "/manifest.webmanifest"]
   },
   "mimeTypes": {
-    ".webmanifest": "application/manifest+json"
+    ".webmanifest": "application/manifest+json",
+    ".mjs": "text/javascript",
+    ".wasm": "application/wasm",
+    ".bcmap": "application/octet-stream"
   }
 }

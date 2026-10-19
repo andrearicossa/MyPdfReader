@@ -4,9 +4,12 @@ Lettore PDF leggero e open source: il testo del documento si legge come un ebook
 regolabile, evidenziazioni e note. Il PDF originale non viene mai modificato: annotazioni e
 posizione di lettura vivono in un file JSON separato, portabile su altri dispositivi.
 
-**Stato: Fase 1 (spike tecnico, non ancora lettore fluido).** La PWA apre un PDF locale
-in sola lettura e prova la persistenza di una nota e una pagina numerica in un JSON
-separato. Non ci sono ancora ricostruzione del testo, evidenziazioni o navigazione PDF.
+**Stato: Fase 2 (motore PDF e anteprima diagnostica, non ancora lettore completo).**
+La PWA estrae il testo di layout semplici in un worker PDF.js, ricostruisce paragrafi
+e titoli e mostra ritagli raster/vettoriali su richiesta. Include confronto con
+l'Originale e avvisi per layout non supportati. Lettura continua, preferenze,
+annotazioni vere e posizione di lettura persistente sono ancora da implementare.
+La nota e la pagina del pannello di persistenza rimangono dati di prova della Fase 1.
 Il formato dati `fluido/file-spike v1` è sperimentale, non il formato definitivo MVP.
 
 La scrittura diretta è disponibile solo se il browser espone le API e l'utente concede i
@@ -16,10 +19,11 @@ file. Gli aggiornamenti PWA vengono bloccati quando ci sono dati non ancora cons
 
 Vedere [ADR-001](docs/ADR-001-ciclo-file-pwa.md) per matrice testata, limiti e checklist
 da eseguire sui dispositivi reali. Il gate della Fase 1 è ancora aperto per quelle prove.
+Per il motore: [ADR-002](docs/ADR-002-motore-pdf.md) e [QA Fase 2](docs/qa-fase2.md).
 
 ## Requisiti
 
-- Node.js 20 o superiore (vedi `.nvmrc`)
+- Node.js 20.16+ oppure 22.3+ (vedi `.nvmrc` e requisiti di PDF.js)
 
 ## Comandi
 
@@ -63,6 +67,7 @@ Per provare il sito già pubblicato (solo con file sintetici di test):
 ```
 src/
   core/     # motore di lettura: dominio puro, nessuna API browser (Fase 2)
+  pdf/      # adattatore browser PDF.js, worker e rendering su richiesta
   storage/  # adattatori di persistenza: file system, import/export, IndexedDB (Fasi 1 e 5)
   ui/       # componenti e stili
   pwa/      # registrazione service worker e banner aggiornamenti

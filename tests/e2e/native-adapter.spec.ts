@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { simplePdf } from '../fixtures/pdf-corpus.mjs';
 
 /**
  * Usa veri FileSystemFileHandle e stream del browser nell'OPFS.
@@ -13,28 +14,31 @@ test('adattatore con handle reali OPFS: scrive, riapre e rileva conflitti', asyn
     browserName !== 'chromium',
     'Harness OPFS per adattatore Chromium; non è un test dei picker OS.',
   );
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'showOpenFilePicker', {
-      configurable: true,
-      value: async () => {
-        const root = await navigator.storage.getDirectory();
-        const handle = await root.getFileHandle('spike.pdf', { create: true });
-        if (!(await handle.getFile()).size) {
-          const writer = await handle.createWritable();
-          await writer.write('%PDF-1.4\nprova OPFS\n%%EOF');
-          await writer.close();
-        }
-        return [handle];
-      },
-    });
-    Object.defineProperty(window, 'showSaveFilePicker', {
-      configurable: true,
-      value: async () => {
-        const root = await navigator.storage.getDirectory();
-        return root.getFileHandle('spike.annotations.json', { create: true });
-      },
-    });
-  });
+  await page.addInitScript(
+    (pdfBytes) => {
+      Object.defineProperty(window, 'showOpenFilePicker', {
+        configurable: true,
+        value: async () => {
+          const root = await navigator.storage.getDirectory();
+          const handle = await root.getFileHandle('spike.pdf', { create: true });
+          if (!(await handle.getFile()).size) {
+            const writer = await handle.createWritable();
+            await writer.write(new Uint8Array(pdfBytes));
+            await writer.close();
+          }
+          return [handle];
+        },
+      });
+      Object.defineProperty(window, 'showSaveFilePicker', {
+        configurable: true,
+        value: async () => {
+          const root = await navigator.storage.getDirectory();
+          return root.getFileHandle('spike.annotations.json', { create: true });
+        },
+      });
+    },
+    [...simplePdf()],
+  );
   await page.goto('/');
   await expect(page.getByTestId('status-capability')).toContainText(
     'Scrittura diretta disponibile',

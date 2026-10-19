@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **Fasi 0 e 1 autorizzate; gate dispositivi reali aperto** · Data: 19/10/2026
+Stato: **Fasi 0, 1 e 2 autorizzate; gate dispositivi reali aperto** · Data: 19/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -111,6 +111,14 @@ del gate su desktop/Android/iOS reali. Il formato `fluido/file-spike v1` non è 
 - **Uscita**: matrice di supporto documentata (ADR-001). Se emergono blocchi, si rivede la decisione D2.
 
 ### Fase 2 – Motore di lettura (≈ 2–3 settimane)
+
+Implementata su richiesta dell'utente, senza attestare la chiusura delle prove
+manuali della Fase 1. Motore PDF.js, modello puro e anteprima diagnostica per pagina,
+con ritagli e confronto Originale. Non è ancora la vista di lettura della Fase 3.
+Decisioni e limiti: [ADR-002](ADR-002-motore-pdf.md); verifiche:
+[QA Fase 2](qa-fase2.md). Validazione qualitativa su PDF reali ancora aperta.
+Verifica automatica locale: 48 test unitari, 46 casi browser passati sui tre motori
+e 2 skip intenzionali OPFS fuori da Chromium.
 
 - Caricamento PDF in worker, estrazione testo per pagina.
 - Ricostruzione: righe → paragrafi, unione parole sillabate, rimozione intestazioni/piè di pagina ripetuti, titoli per dimensione font.

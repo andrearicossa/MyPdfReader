@@ -17,7 +17,11 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'manifest.webmanifest', 'icons/*'],
       workbox: {
         navigateFallback: 'index.html',
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,json}'],
+        globPatterns: [
+          '**/*.{js,mjs,css,html,svg,png,webmanifest,json,bcmap,pfb,ttf,wasm,bin,icc}',
+          'pdfjs/**/LICENSE*',
+        ],
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
     }),
   ],
