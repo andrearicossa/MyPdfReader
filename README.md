@@ -27,9 +27,10 @@ del [piano di implementazione](docs/piano_implementazione_lettore_pdf.md).
 | `npm run format`    | Formatta il codice con Prettier                           |
 | `npm run icons`     | Rigenera le icone PNG in `public/icons/`                  |
 
-Nota: con npm 10.8.x l'installazione può fallire per un bug noto di risoluzione dei peer
-dependency; in quel caso usare `npm install --legacy-peer-deps` oppure una versione più
-recente di npm.
+Nota: il file `.npmrc` di progetto imposta `legacy-peer-deps=true` per aggirare un bug
+noto di npm 10.8.x nella risoluzione dei peer di `@preact/preset-vite`; così l'installazione
+è identica in locale e in CI, senza flag manuali. I peer effettivi sono tutti soddisfatti
+(una sola copia di Vite 6) e `npm audit` è pulito.
 
 ## Struttura
 
@@ -79,9 +80,11 @@ consente di riutilizzare il motore in futuro con Tauri o provider cloud senza ri
 3. Il portale genera un deployment token: copiarlo da
    _Gestione token di distribuzione_ e aggiungerlo in GitHub come secret
    `AZURE_STATIC_WEB_APPS_API_TOKEN` (Settings → Secrets and variables → Actions).
-4. Il workflow `.github/workflows/azure-static-web-app.yml` builda (con lint, tipi e test) e
-   pubblica su `https://<nome-app>.azurestaticapps.net`. Ogni pull request riceve un ambiente
-   di anteprima automatico.
+4. Il workflow builda e testa il progetto (lint, tipi, test, build), poi pubblica la build
+   già pronta con `skip_app_build: true`: Azure non ricompila nulla e ciò che viene
+   pubblicato è esattamente ciò che i test hanno verificato. L'app sarà raggiungibile su
+   `https://<nome-app>.azurestaticapps.net` e ogni pull request riceverà un ambiente di
+   anteprima automatico.
 
 Il workflow CI separato (`.github/workflows/ci.yml`) esegue su ogni push e pull request:
 formato, lint, tipi, test unitari, build e test E2E (incluso il test offline).
@@ -98,6 +101,9 @@ i test Playwright non sostituiscono la prova manuale sui dispositivi.
 
 ## Licenza
 
-MIT — vedi [LICENSE](LICENSE). Il titolare del copyright nel testo è da completare con il
-nome scelto per il progetto. Le dipendenze usate (Preact, Vite, PDF.js in futuro) sono
-compatibili con questa licenza.
+MIT — vedi [LICENSE](LICENSE). Il titolare del copyright nel testo è un placeholder da
+completare con il nome scelto prima della pubblicazione pubblica del repository.
+
+Licenze delle dipendenze dirette (verificate con la versione installata, tutte compatibili
+con MIT): Preact, Vite, vite-plugin-pwa, Workbox, Vitest, ESLint, Prettier e
+typescript-eslint sono MIT; Playwright e TypeScript sono Apache-2.0.

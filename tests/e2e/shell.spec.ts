@@ -26,8 +26,10 @@ test('la shell funziona offline grazie al service worker', async ({ page, contex
 test('il cambio tema è immediato e non ricarica la pagina', async ({ page }) => {
   await page.goto('/');
   const html = page.locator('html');
+  // Il tema iniziale segue la preferenza di sistema.
+  await expect(html).toHaveAttribute('data-theme', /light|dark/);
   const before = await html.getAttribute('data-theme');
   await page.getByRole('button', { name: /tema/ }).click();
-  const after = await html.getAttribute('data-theme');
-  expect(after).not.toBe(before);
+  // Attesa con retry: l'aggiornamento dell'attributo avviene in modo asincrono.
+  await expect(html).not.toHaveAttribute('data-theme', before ?? '');
 });

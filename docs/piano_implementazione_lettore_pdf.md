@@ -10,7 +10,7 @@ Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MI
 | ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
 | Linguaggio       | TypeScript (strict)                                           | Tipi condivisi tra motore e UI, schema del file verificabile |
 | Build            | Vite + `vite-plugin-pwa` (Workbox)                            | Output statico, service worker e manifest generati           |
-| UI               | Preact (o Svelte) + CSS                                       | Bundle leggero; nessun framework pesante                     |
+| UI               | Preact + CSS                                                  | Bundle leggero; scelta definitiva, nessun framework pesante  |
 | PDF              | `pdfjs-dist` (Apache-2.0), worker separato                    | Rendering pagine, estrazione testo e immagini                |
 | Stato locale     | IndexedDB (`idb`)                                             | Cache delle annotazioni e preferenze globali                 |
 | Validazione file | JSON Schema + `ajv` (o `zod`)                                 | Import sicuro del file associato                             |
@@ -86,6 +86,14 @@ File `<nomepdf>.annotations.json`, unico per documento:
 - Pipeline CI: build, test, deploy su Azure SWA con anteprime per PR.
 - Shell PWA installabile (manifest, service worker, funzionamento offline della shell).
 - **Uscita**: app vuota installabile da URL Azure su desktop, Android e iOS.
+
+**Stato: completata localmente (19/10/2026); gate finale aperto.** Progetto "Fluido" in
+`pdf-fluid-reader/`: lint, tipi, 5 test unitari e 3 test E2E (incluso offline) verdi; build con
+43 KiB di precache; `npm audit` pulito; licenze dipendenze verificate (MIT/Apache-2.0,
+compatibili con MIT); workflow CI e deploy Azure pronti. **Restano a carico dell'utente,
+e chiudono la fase**: pubblicare il repository su GitHub, creare la risorsa Static Web App
+con il token di deploy, poi verificare l'installazione della PWA su desktop, Android e iOS
+reali. Successo: Fase 1 (spike sul ciclo del file).
 
 ### Fase 1 – Spike tecnico sul ciclo del file (≈ 1 settimana) – gate
 
