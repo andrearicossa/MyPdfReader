@@ -4,3 +4,8 @@ export function simplePdf(): Buffer;
 export function columnsPdf(): Buffer;
 export function scannedPdf(): Buffer;
 export function mixedPdf(): Buffer;
+export function boxedQuotePdf(options?: {
+  segments?: boolean;
+  background?: boolean;
+  image?: boolean;
+}): Buffer;

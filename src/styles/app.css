@@ -423,6 +423,34 @@ button:disabled {
   margin-bottom: var(--space-4);
   white-space: pre-wrap;
 }
+.engine-box {
+  margin-block: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-offset);
+}
+.engine-box > p + p,
+.engine-quote > p + p {
+  margin-top: var(--space-4);
+}
+.engine-box h3 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}
+.engine-quote {
+  margin: var(--space-6) clamp(0.5rem, 3vw, 1.5rem);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-primary);
+}
+.engine-quote footer {
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.engine-quote cite {
+  font-style: normal;
+}
 .engine-figure {
   margin: var(--space-6) 0;
   font-family: var(--font-body);

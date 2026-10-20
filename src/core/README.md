@@ -2,7 +2,11 @@
 
 Modulo di dominio del lettore: ricostruzione del testo, modello di lettura, ancora delle
 annotazioni e schema del file associato. `reading-model.ts` implementa la Fase 2:
-normalizzazione versionata, blocchi, offset e geometrie per pagina.
+normalizzazione versionata `fluido-text/2`, blocchi, offset e geometrie per pagina.
+`text-groups.ts` gestisce box e citazioni euristiche. Gruppi e figli hanno intervalli
+UTF-16 nel medesimo testo della pagina, senza ripetere il testo dei figli.
+Il filtro dei margini ricorrenti confronta soltanto le pagine attualmente in cache:
+non rappresenta un'analisi preventiva dell'intero documento.
 L'adattatore PDF.js è in `src/pdf`, fuori dal dominio puro.
 Nella Fase 1 `file-spike.ts` definisce esclusivamente il formato sperimentale
 della prova e la sua validazione, non lo schema definitivo delle annotazioni.

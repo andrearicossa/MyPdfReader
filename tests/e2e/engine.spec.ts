@@ -25,17 +25,18 @@ test('worker reale: testo, paragrafi, titoli, margini e ritagli raster/vettore',
   page.on('request', (request) => requests.push(request.url()));
   await page.getByTestId('input-pdf').setInputFiles(upload(simplePdf()));
   await expect(page.getByTestId('engine-status')).toContainText('Layout semplice rilevato.');
-  await expect(page.getByTestId('engine-status')).toContainText('6 righe marginali');
+  await expect(page.getByTestId('engine-status')).toContainText('1 pagina in cache');
   await expect(page.getByTestId('engine-content').getByRole('heading')).toHaveText(
     'Il piacere della lettura',
   );
   await expect(page.getByTestId('engine-content')).toContainText('riproduzione');
   await expect(page.getByTestId('engine-content').locator('p[data-block-id]')).toHaveText([
+    'Fluido | Documento di prova',
     'Questa pagina contiene un testo semplice e una parola riproduzione che prosegue nella riga successiva.',
     'Un nuovo paragrafo conserva il riferimento alla pagina originale. Il PDF originale rimane invariato.',
     'Figura 1. Colori del documento.',
+    'Pagina 1',
   ]);
-  await expect(page.getByTestId('engine-content')).not.toContainText('Fluido |');
   const figures = page.getByTestId('engine-figure');
   await expect(figures).toHaveCount(1);
   await expect(figures.locator('canvas')).toBeHidden();
@@ -52,6 +53,8 @@ test('worker reale: testo, paragrafi, titoli, margini e ritagli raster/vettore',
   await figures.getByRole('button', { name: 'Nascondi figura' }).click();
   await expect(figures.locator('canvas')).toBeHidden();
   await page.getByTestId('engine-page').fill('2');
+  await page.getByRole('button', { name: 'Vai alla pagina' }).click();
+  await expect(page.getByTestId('engine-status')).toContainText('Pagina 2 pronta.');
   await expect(page.getByTestId('engine-content')).toContainText('Capitolo 2');
   await expect(page.getByTestId('engine-figure')).toHaveCount(1);
   await page.getByRole('button', { name: 'Mostra figura' }).click();
@@ -76,9 +79,13 @@ test('worker reale: testo, paragrafi, titoli, margini e ritagli raster/vettore',
   await page.getByTestId('engine-original').click();
   await expect(page.getByTestId('engine-content')).toContainText('Capitolo 2');
   await page.getByTestId('engine-page').fill('3');
+  await page.getByRole('button', { name: 'Vai alla pagina' }).click();
+  await expect(page.getByTestId('engine-status')).toContainText('Pagina 3 pronta.');
   await expect(page.getByTestId('engine-figure')).toHaveCount(0);
   await page.getByTestId('engine-page').fill('1');
+  await page.getByRole('button', { name: 'Vai alla pagina' }).click();
   await expect(page.getByTestId('engine-content')).toContainText('Il piacere');
+  await expect(page.getByTestId('engine-content')).not.toContainText('Fluido |');
   await page.setViewportSize({ width: 375, height: 812 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -98,8 +105,9 @@ test('scansione, colonne e documento misto: avviso esplicito e originale disponi
     await page.getByTestId('input-pdf').setInputFiles(upload(bytes, name));
     await expect(page.getByTestId('text-pdf-name')).toHaveText(name);
     await expect(page.getByTestId('button-open-pdf')).toBeEnabled();
-    await expect(page.getByTestId('engine-status')).not.toContainText('Estrazione:');
+    await expect(page.getByTestId('engine-status')).toContainText('Pagina 1 pronta.');
     await page.getByTestId('engine-page').fill(String(selected));
+    await page.getByRole('button', { name: 'Vai alla pagina' }).click();
     await expect(page.getByTestId('engine-warning')).toContainText(expected);
     await expect(page.getByTestId('engine-original')).toBeVisible();
     await page.getByTestId('engine-original').click();

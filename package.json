@@ -1,6 +1,6 @@
 {
   "name": "fluido",
-  "version": "0.1.0-engine.2",
+  "version": "0.1.0-engine.3",
   "description": "Lettore PDF open source con modalità di lettura fluida. PWA statica, nessun backend.",
   "license": "MIT",
   "private": true,

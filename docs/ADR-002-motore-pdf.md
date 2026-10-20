@@ -3,6 +3,11 @@
 Stato: implementato nella Fase 2, sperimentale. Nessuna attestazione sui dispositivi
 reali dell'utente; il gate manuale della Fase 1 rimane aperto.
 
+Aggiornamento 20/10/2026: questo ADR descrive la baseline della Fase 2.
+Estrazione dell'intero documento, filtro marginale globale e normalizzazione `/1`
+sono superati da [ADR-003](ADR-003-pagine-box-citazioni.md): estrazione su richiesta,
+cache limitata e modello `fluido-text/2` con box e citazioni.
+
 ## Perimetro
 
 La Fase 2 aggiunge parsing, estrazione, un modello verificabile e un'anteprima

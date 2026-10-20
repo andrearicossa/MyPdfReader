@@ -5,8 +5,12 @@ regolabile, evidenziazioni e note. Il PDF originale non viene mai modificato: an
 posizione di lettura vivono in un file JSON separato, portabile su altri dispositivi.
 
 **Stato: Fase 2 (motore PDF e anteprima diagnostica, non ancora lettore completo).**
-La PWA estrae il testo di layout semplici in un worker PDF.js, ricostruisce paragrafi
-e titoli e mostra ritagli raster/vettoriali su richiesta. Include confronto con
+La PWA estrae nel worker PDF.js solo la pagina selezionata, senza elaborare le altre
+in anticipo. Mantiene una cache LRU di 8 pagine visitate e ricostruisce paragrafi,
+titoli, box rettangolari semplici e citazioni rientrate con attribuzione esplicita.
+Il testo nei gruppi resta selezionabile; le immagini vere restano ritagli su richiesta.
+Il file PDF viene comunque letto interamente per caricamento e hash, non a intervalli.
+Include confronto con
 l'Originale e avvisi per layout non supportati. Lettura continua, preferenze,
 annotazioni vere e posizione di lettura persistente sono ancora da implementare.
 La nota e la pagina del pannello di persistenza rimangono dati di prova della Fase 1.
@@ -19,7 +23,11 @@ file. Gli aggiornamenti PWA vengono bloccati quando ci sono dati non ancora cons
 
 Vedere [ADR-001](docs/ADR-001-ciclo-file-pwa.md) per matrice testata, limiti e checklist
 da eseguire sui dispositivi reali. Il gate della Fase 1 è ancora aperto per quelle prove.
-Per il motore: [ADR-002](docs/ADR-002-motore-pdf.md) e [QA Fase 2](docs/qa-fase2.md).
+Per il motore: [ADR-002](docs/ADR-002-motore-pdf.md),
+[ADR-003: pagine, box e citazioni](docs/ADR-003-pagine-box-citazioni.md) e
+[QA Fase 2](docs/qa-fase2.md). Il riconoscimento dei gruppi è euristico, non una
+garanzia su qualsiasi PDF; il documento dello screenshot dell'utente non è disponibile
+come PDF ed è ancora da verificare. Nessun OCR o supporto a layout complessi.
 
 ## Requisiti
 

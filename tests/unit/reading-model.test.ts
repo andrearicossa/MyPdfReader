@@ -24,7 +24,7 @@ const page = (runs: TextRun[], number = 1): RawPage => ({
   figures: [],
 });
 
-describe('Modello di lettura, normalizzazione fluido-text/1', () => {
+describe('Modello di lettura, normalizzazione fluido-text/2', () => {
   it('normalizza spazi e legature preservando Unicode e UTF-16', () => {
     expect(normalizeText('  caﬀè\u00a0 e\u0300 \u00ad日本語 😀 ')).toBe('caffè è 日本語 😀');
   });

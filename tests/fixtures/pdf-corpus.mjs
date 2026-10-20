@@ -103,3 +103,26 @@ export function mixedPdf() {
     'q 480 0 0 700 52 80 cm /Im1 Do Q\n',
   ]);
 }
+
+/** Composizione analoga allo screenshot dell'utente, non copia del documento. */
+export function boxedQuotePdf({ segments = false, background = false, image = false } = {}) {
+  const border = segments
+    ? 'q 0 G 52 470 m 542 470 l S 542 470 m 542 690 l S 542 690 m 52 690 l S 52 690 m 52 470 l S Q\n'
+    : `q ${background ? '0.94 g 52 470 490 220 re f' : '0 G 52 470 490 220 re S'} Q\n`;
+  return makePdf([
+    text('Box e citazioni', 52, 790, 24) +
+      text('Il testo normale prima del box mantiene un margine ampio.', 52, 750) +
+      text('La seconda riga appartiene allo stesso paragrafo del documento.', 52, 734) +
+      border +
+      text('Primo paragrafo nel box: il testo deve restare selezionabile.', 66, 660, 11) +
+      text('Questa seconda riga non deve essere convertita in immagine.', 66, 644, 11) +
+      text('Secondo paragrafo nel box con un riferimento distinto.', 66, 604, 11) +
+      text('Il bordo non deve generare una figura duplicata.', 66, 588, 11) +
+      (image ? 'q 120 0 0 60 320 500 cm /Im1 Do Q\n' : '') +
+      text('Una citazione resta testo selezionabile e leggibile,', 78, 400, 11) +
+      text('con rientro e attribuzione separati dal testo principale.', 78, 384, 11) +
+      text('- Autrice di prova', 90, 358, 10) +
+      text('Il testo normale dopo la citazione riprende il margine originale.', 52, 310) +
+      text('Non devono comparire parole mancanti o righe duplicate.', 52, 294),
+  ]);
+}

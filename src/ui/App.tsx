@@ -37,7 +37,7 @@ export function App() {
 
       <footer class="app-footer">
         <p>
-          Fluido v0.1.0-engine.2 · Fase 2 · <a href="https://opensource.org/licenses/MIT">MIT</a>
+          Fluido v0.1.0-engine.3 · Fase 2 · <a href="https://opensource.org/licenses/MIT">MIT</a>
           {' · '}
           <a href="./pdfjs/LICENSE" download="PDF.js-LICENSE.txt">
             Licenza PDF.js

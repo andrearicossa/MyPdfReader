@@ -117,7 +117,11 @@ manuali della Fase 1. Motore PDF.js, modello puro e anteprima diagnostica per pa
 con ritagli e confronto Originale. Non è ancora la vista di lettura della Fase 3.
 Decisioni e limiti: [ADR-002](ADR-002-motore-pdf.md); verifiche:
 [QA Fase 2](qa-fase2.md). Validazione qualitativa su PDF reali ancora aperta.
-Verifica automatica locale: 48 test unitari, 46 casi browser passati sui tre motori
+Estensione autorizzata il 20/10/2026: estrazione della sola pagina richiesta,
+cache LRU di 8 pagine, box testuali semplici e citazioni con attribuzione.
+[ADR-003](ADR-003-pagine-box-citazioni.md) precisa euristiche e limiti; il PDF
+originale della pagina 35 non è disponibile, quindi quella prova resta aperta.
+Verifica automatica locale: 62 test unitari, 58 casi browser passati sui tre motori
 e 2 skip intenzionali OPFS fuori da Chromium.
 
 - Caricamento PDF in worker, estrazione testo per pagina.

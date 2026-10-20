@@ -2,6 +2,7 @@
  * Origine in alto a sinistra; offset UTF-16 nel testo normalizzato della singola pagina.
  * Nessun ancoraggio stabile alle annotazioni è promesso in questa fase.
  */
+import { inside, group, groupQuotes, assignOffsets } from './text-groups';
 export type Rect = { x: number; y: number; width: number; height: number };
 export type TextRun = Rect & { text: string; fontSize: number; vertical?: boolean; rtl?: boolean };
 export type RawPage = {
@@ -11,16 +12,20 @@ export type RawPage = {
   rotation: number;
   runs: TextRun[];
   figures: Rect[];
+  frames?: Rect[];
+  images?: Rect[];
   graphicWarnings?: string[];
 };
 export type TextBlock = {
-  kind: 'paragraph' | 'heading';
+  kind: 'paragraph' | 'heading' | 'box' | 'quote';
   id: string;
   page: number;
   text: string;
   start: number;
   end: number;
   rects: Rect[];
+  children?: TextBlock[];
+  attributionId?: string;
 };
 export type FigureBlock = {
   kind: 'figure';
@@ -40,7 +45,7 @@ export type ReadingPage = {
   supported: boolean;
 };
 export type ReadingModel = {
-  normalization: 'fluido-text/1';
+  normalization: 'fluido-text/2';
   pages: ReadingPage[];
   support: 'simple' | 'partial' | 'unsupported';
   removedMarginalLines: number;
@@ -170,21 +175,79 @@ export function buildReadingModel(rawPages: RawPage[]): ReadingModel {
       warnings.push('Testo verticale o ruotato: ricostruzione non supportata.');
     if (page.runs.some((run) => run.rtl))
       warnings.push('Testo da destra a sinistra: ordine di lettura non supportato.');
+    const frames: Rect[] = [];
+    if (!warnings.length)
+      for (const frame of page.frames ?? []) {
+        const contained = lines.filter((l) => inside(l, frame));
+        if (
+          contained.length >= 2 &&
+          (page.images ?? []).some(
+            (image) =>
+              image.x < frame.x + frame.width &&
+              image.x + image.width > frame.x &&
+              image.y < frame.y + frame.height &&
+              image.y + image.height > frame.y,
+          )
+        ) {
+          warnings.push('Box con immagini: raggruppamento non supportato. Consulta l’originale.');
+          continue;
+        }
+        if (
+          contained.length < 2 ||
+          frame.width * frame.height > page.width * page.height * 0.75 ||
+          contained.some((l) => l.x - frame.x < 2 || frame.x + frame.width - l.x - l.width < 2) ||
+          (page.images ?? []).some(
+            (image) =>
+              image.x < frame.x + frame.width &&
+              image.x + image.width > frame.x &&
+              image.y < frame.y + frame.height &&
+              image.y + image.height > frame.y,
+          ) ||
+          hasColumns(contained, page.width)
+        )
+          continue;
+        if (frames.some((f) => inside(f, frame, 3) && inside(frame, f, 3))) continue;
+        if (
+          frames.some(
+            (f) =>
+              f.x < frame.x + frame.width &&
+              f.x + f.width > frame.x &&
+              f.y < frame.y + frame.height &&
+              f.y + f.height > frame.y,
+          )
+        ) {
+          warnings.push('Box sovrapposti: raggruppamento incerto. Verifica l’originale.');
+          continue;
+        }
+        frames.push(frame);
+      }
+    const owner = (line: Line) => frames.find((f) => inside(line, f));
+    const outside = lines.filter((l) => !owner(l));
     const bodySize = median(
-      lines.filter((line) => line.text.length > 25).map((line) => line.fontSize),
+      (outside.length ? outside : lines)
+        .filter((line) => line.text.length > 25)
+        .map((line) => line.fontSize),
     );
-    const blocks: (TextBlock | FigureBlock)[] = [];
+    const paragraphs: TextBlock[] = [];
+    const owners = new Map<TextBlock, Rect | undefined>();
+    const figures = page.figures.filter(
+      (r) => !frames.some((frame) => inside(r, frame, 5) && inside(frame, r, 5)),
+    );
+    if (figures.some((region) => lines.filter((line) => inside(line, region, 3)).length >= 2))
+      warnings.push('Regione grafica con testo: separazione incerta. Confronta con l’originale.');
     let previous: Line | undefined;
     let current: TextBlock | undefined;
-    let text = '';
+    let previousOwner: Rect | undefined;
     for (const line of lines) {
       const kind = line.fontSize >= bodySize * 1.3 ? 'heading' : 'paragraph';
       const gap = previous ? line.y - previous.y - previous.height : Infinity;
       const previousBottom = previous ? previous.y + previous.height : -Infinity;
       const figureBetween =
-        previous && page.figures.some((r) => r.y >= previousBottom && r.y + r.height <= line.y);
+        previous && figures.some((r) => r.y >= previousBottom && r.y + r.height <= line.y);
+      const lineOwner = owner(line);
       const newBlock =
         !current ||
+        lineOwner !== previousOwner ||
         current.kind !== kind ||
         kind === 'heading' ||
         gap > line.fontSize * 0.9 ||
@@ -193,14 +256,15 @@ export function buildReadingModel(rawPages: RawPage[]): ReadingModel {
       if (newBlock) {
         current = {
           kind,
-          id: `p${page.page}-b${blocks.length + 1}`,
+          id: `p${page.page}-b${paragraphs.length + 1}`,
           page: page.page,
           text: line.text,
           start: 0,
           end: 0,
           rects: [line],
         };
-        blocks.push(current);
+        paragraphs.push(current);
+        owners.set(current, lineOwner);
       } else {
         const dehyphenate = /\p{L}-$/u.test(current!.text) && /^\p{Ll}/u.test(line.text);
         current!.text = dehyphenate
@@ -209,17 +273,34 @@ export function buildReadingModel(rawPages: RawPage[]): ReadingModel {
         current!.rects.push({ x: line.x, y: line.y, width: line.width, height: line.height });
       }
       previous = line;
+      previousOwner = lineOwner;
     }
-    for (const block of blocks) {
-      if (block.kind === 'figure') continue;
-      if (text) text += '\n\n';
-      block.start = text.length;
-      text += block.text;
-      block.end = text.length;
-      // Le geometrie esportabili non conservano i run grezzi.
+    for (const block of paragraphs) {
       block.rects = block.rects.map(({ x, y, width, height }) => ({ x, y, width, height }));
     }
-    for (const [i, region] of page.figures.entries()) {
+    const grouped: TextBlock[] = [];
+    for (let i = 0; i < paragraphs.length; i++) {
+      const paragraph = paragraphs[i]!;
+      const frame = owners.get(paragraph);
+      if (!frame) {
+        grouped.push(paragraph);
+        continue;
+      }
+      const children = [paragraph];
+      while (i + 1 < paragraphs.length && owners.get(paragraphs[i + 1]!) === frame)
+        children.push(paragraphs[++i]!);
+      grouped.push(group('box', children));
+    }
+    const blocks: (TextBlock | FigureBlock)[] = warnings.length
+      ? grouped
+      : groupQuotes(grouped, bodySize);
+    let text = '';
+    for (const block of blocks as TextBlock[]) {
+      if (text) text += '\n\n';
+      assignOffsets(block, text.length);
+      text += block.text;
+    }
+    for (const [i, region] of figures.entries()) {
       const overlaps = lines.some(
         (l) =>
           l.x < region.x + region.width &&
@@ -251,7 +332,7 @@ export function buildReadingModel(rawPages: RawPage[]): ReadingModel {
   });
   const supported = pages.filter((page) => page.supported).length;
   return {
-    normalization: 'fluido-text/1',
+    normalization: 'fluido-text/2',
     pages,
     removedMarginalLines,
     support:

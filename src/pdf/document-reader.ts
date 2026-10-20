@@ -10,11 +10,20 @@ import {
   buildReadingModel,
   type RawPage,
   type Rect,
-  type ReadingModel,
+  type ReadingPage,
 } from '../core/reading-model';
 import { mergeRegions, multiply, transformedRect, type Matrix } from './figures';
+import { rectanglePath, segmentFrames } from './frames';
+import { PageCache } from './page-cache';
+
+export type PageExtraction = {
+  page: ReadingPage;
+  cachedPages: number[];
+  removedMarginalLines: number;
+};
 
 export class DocumentReader {
+  private pages = new PageCache<RawPage>((number) => this.readPage(number), 8);
   private constructor(
     private task: PDFDocumentLoadingTask,
     private pdf: PDFDocumentProxy,
@@ -54,15 +63,25 @@ export class DocumentReader {
     }
   }
 
-  async extract(signal: AbortSignal, onProgress: (page: number) => void): Promise<ReadingModel> {
-    const pages: RawPage[] = [];
-    for (let number = 1; number <= this.pageCount; number++) {
-      signal.throwIfAborted();
-      const page = await this.pdf.getPage(number);
+  async extractPage(number: number, signal: AbortSignal): Promise<PageExtraction> {
+    if (!Number.isSafeInteger(number) || number < 1 || number > this.pageCount)
+      throw new Error('Pagina fuori intervallo.');
+    const raw = await this.pages.get(number, signal);
+    signal.throwIfAborted();
+    const model = buildReadingModel([...this.pages.values().filter((p) => p.page !== number), raw]);
+    return {
+      page: model.pages.find((p) => p.page === number)!,
+      cachedPages: this.pages.numbers(),
+      removedMarginalLines: model.removedMarginalLines,
+    };
+  }
+
+  private async readPage(number: number): Promise<RawPage> {
+    const page = await this.pdf.getPage(number);
+    try {
       const viewport = page.getViewport({ scale: 1 });
       const view = viewport.transform as Matrix;
       const content = await page.getTextContent({ disableNormalization: true });
-      signal.throwIfAborted();
       const runs = content.items.flatMap((item) => {
         if (!('str' in item) || !item.str.trim()) return [];
         const m = multiply(view, item.transform as Matrix);
@@ -81,14 +100,17 @@ export class DocumentReader {
         ];
       });
       const operators = await page.getOperatorList();
-      signal.throwIfAborted();
       let matrix: Matrix = [1, 0, 0, 1, 0, 0];
       const stack: Matrix[] = [];
       const regions: Rect[] = [];
+      const images: Rect[] = [];
+      const frames: Rect[] = [];
+      const segments: Rect[] = [];
       const graphicWarnings = new Set<string>();
       for (let i = 0; i < operators.fnArray.length; i++) {
         const fn = operators.fnArray[i];
         const args = operators.argsArray[i] as unknown[];
+        const before = regions.length;
         if (fn === OPS.save) stack.push([...matrix]);
         else if (fn === OPS.restore) matrix = stack.pop() ?? [1, 0, 0, 1, 0, 0];
         else if (fn === OPS.transform) matrix = multiply(matrix, args as Matrix);
@@ -131,25 +153,46 @@ export class DocumentReader {
             'Grafica complessa: alcune figure potrebbero non essere isolate. Consulta l’originale.',
           );
         } else if (fn === OPS.constructPath && args[2] && args[0] !== OPS.endPath) {
-          regions.push(
-            transformedRect(args[2] as [number, number, number, number], multiply(view, matrix)),
-          );
+          const transform = multiply(view, matrix);
+          const region = transformedRect(args[2] as [number, number, number, number], transform);
+          regions.push(region);
+          const frame = rectanglePath((args[1] as unknown[])[0], transform);
+          if (frame) frames.push(frame);
+          else if (region.width < 1 || region.height < 1) segments.push(region);
         }
+        if (
+          fn === OPS.paintImageXObject ||
+          fn === OPS.paintInlineImageXObject ||
+          fn === OPS.paintImageMaskXObject ||
+          fn === OPS.paintImageXObjectRepeat ||
+          fn === OPS.paintImageMaskXObjectRepeat
+        )
+          images.push(...regions.slice(before));
       }
-      pages.push({
+      return {
         page: number,
         width: viewport.width,
         height: viewport.height,
         rotation: viewport.rotation,
         runs,
         figures: mergeRegions(regions, viewport.width, viewport.height),
+        frames: [...frames, ...segmentFrames(segments)],
+        images,
         graphicWarnings: [...graphicWarnings],
-      });
+      };
+    } finally {
       page.cleanup();
-      onProgress(number);
     }
-    signal.throwIfAborted();
-    return buildReadingModel(pages);
+  }
+
+  async renderPage(number: number, canvas: HTMLCanvasElement): Promise<void> {
+    const page = await this.pdf.getPage(number);
+    const viewport = page.getViewport({ scale: 1 });
+    await this.renderRegion(
+      number,
+      { x: 0, y: 0, width: viewport.width, height: viewport.height },
+      canvas,
+    );
   }
 
   async renderRegion(pageNumber: number, region: Rect, canvas: HTMLCanvasElement): Promise<void> {
@@ -173,6 +216,7 @@ export class DocumentReader {
   }
 
   async close(): Promise<void> {
+    this.pages.close();
     try {
       await this.task.destroy();
     } finally {
