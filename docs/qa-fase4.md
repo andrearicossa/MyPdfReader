@@ -24,6 +24,30 @@ guida il perimetro box/citazioni, ma non permette di verificarne l'estrazione re
 - **Ultime rifiniture UI**: dopo contrasto e nome del documento, ripetizione dei
   dieci scenari annotazioni su Chromium; il nome visibile proviene dal PDF
   realmente aperto, non dal nome eventualmente conservato nel JSON.
+- **Browser su Azure**: l'intera suite ripetuta sulla release pubblicata ha
+  superato 107 test, con le stesse quattro esclusioni previste. Nessun server
+  di sviluppo viene avviato da questa esecuzione.
+
+## Pubblicazione verificata
+
+Codice applicativo della release:
+[`b06639e`](https://github.com/andrearicossa/MyPdfReader/commit/b06639e798f54c6b5a1c2d803da425a0ddd6a744).
+La [CI della release](https://github.com/andrearicossa/MyPdfReader/actions/runs/39664929428)
+e il [deploy Azure](https://github.com/andrearicossa/MyPdfReader/actions/runs/39664929625)
+si sono conclusi con successo. L'aggiornamento successivo di questo rapporto
+contiene soltanto documentazione, non cambia il codice applicativo.
+
+Il [sito Azure](https://proud-desert-027a07a10.1.azurestaticapps.net) è stato aperto
+in un contesto browser pulito: footer `v0.3.0-annotations.1`, caricamento del PDF,
+selezione reale, quattro colori, nota modificabile, pannello responsive, salto al
+passaggio, import errato e note assenti/ambigue conservate. Anche Originale e
+apertura del PDF locale in una nuova scheda funzionano; nessun nuovo `pageerror`.
+
+L'artefatto di anteprima è stato aggiornato mantenendo il suo ID. Il collegamento
+pubblico presenta un controllo Cloudflare nel browser QA; il proxy dell'anteprima
+mostra la versione nuova ma blocca il worker per origine `null`. La limitazione
+è dell'hosting incorporato e rimane esplicita: per l'uso e la verifica del lettore
+va utilizzato Azure. Non è stato inserito un worker simulato o un parser alternativo.
 
 ## Copertura annotazioni
 
@@ -104,7 +128,8 @@ esplorativa comprende modifica/ripresa della lettura, alternanza Originale/testo
 riduzione/ripristino del viewport e apertura/chiusura della lista annotazioni.
 Il collegamento all'originale apre realmente una scheda con URL blob locale.
 Non osservati nuovi `pageerror` né overflow orizzontale nei viewport controllati.
-Il controllo dei link di pubblicazione deve seguire il deploy della release.
+La verifica interattiva è stata ripetuta dopo il deploy, oltre alla suite completa
+eseguita contro Azure.
 
 ## Limiti e verifiche manuali aperte
 

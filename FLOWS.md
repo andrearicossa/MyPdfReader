@@ -1,5 +1,21 @@
 # Main flows
 
+## Fase 4: verifica del 21/10/2026
+
+- Release applicativa `b06639e`, versione `0.3.0-annotations.1`, inviata a main.
+- Installazione pulita, audit senza vulnerabilità, formato, lint, tipi e build passati.
+- 90 unitari superati; 107 browser superati e quattro esclusioni OPFS previste.
+- Suite completa ripetuta sul sito Azure con gli stessi 107 passaggi e quattro skip.
+- CI e deploy Azure conclusi con successo; link e dettagli in `docs/qa-fase4.md`.
+- Percorso interattivo Azure in contesto pulito: selezione reale, quattro colori,
+  note/editor, import errato, ancore non risolte, Originale e link al PDF locale.
+- Desktop 1280×900, finestra 1280×500, tablet 768×1024, telefono 375×900;
+  temi chiaro/scuro/seppia, contrasto misurato, nessun overflow orizzontale osservato.
+- Prefissi/citazioni non risolti non inventano evidenziazioni. La lista conserva le note.
+- Nessun nuovo errore `pageerror` nel percorso Azure. Anteprima aggiornata ma worker
+  impedito dall'origine opaca dell'host; Azure rimane il riferimento funzionale.
+- Restano aperti il PDF reale dell'utente, hardware touch/permessi esterni e Fase 5.
+
 ## Fase 4: inventario prima delle modifiche
 
 - Selezionare un passaggio nel testo, in box/citazioni/attribuzioni; evidenziare
