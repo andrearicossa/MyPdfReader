@@ -1,6 +1,6 @@
 /** Coordinate in punti PDF: viewport PDF.js a scala 1, rotazione della pagina applicata.
  * Origine in alto a sinistra; offset UTF-16 nel testo normalizzato della singola pagina.
- * Nessun ancoraggio stabile alle annotazioni è promesso in questa fase.
+ * Le annotazioni usano questi offset insieme a citazione e contesto (core/annotations).
  */
 import { inside, group, groupQuotes, assignOffsets } from './text-groups';
 export type Rect = { x: number; y: number; width: number; height: number };

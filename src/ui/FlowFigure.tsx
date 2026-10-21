@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FigureBlock } from '../core/reading-model';
 import type { DocumentReader } from '../pdf/document-reader';
+import { useAnnotations } from './annotations';
 
 export function FlowFigure({ reader, figure }: { reader: DocumentReader; figure: FigureBlock }) {
+  const annotations = useAnnotations();
   const host = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState('waiting');
@@ -40,7 +42,7 @@ export function FlowFigure({ reader, figure }: { reader: DocumentReader; figure:
     };
   }, [reader, figure.id, retry]);
   return (
-    <figure ref={host} class="flow-figure" data-testid="flow-figure">
+    <figure ref={host} class="flow-figure" data-testid="flow-figure" data-figure-id={figure.id}>
       <figcaption>
         Figura · pagina {figure.page}
         {figure.placement === 'page-end' ? ' · posizione incerta' : ''}
@@ -67,7 +69,14 @@ export function FlowFigure({ reader, figure }: { reader: DocumentReader; figure:
           aria-label={`Figura della pagina ${figure.page}`}
         />
       </div>
-      <button class="secondary-button" disabled={state !== 'ready'} onClick={() => setZoom(true)}>
+      <button
+        class="secondary-button"
+        disabled={state !== 'ready'}
+        onClick={() => {
+          annotations.position({ page: figure.page, offset: 0, figure: figure.id, fraction: 0 });
+          setZoom(true);
+        }}
+      >
         Ingrandisci figura
       </button>
       {zoom && <FigureZoom reader={reader} figure={figure} dismiss={() => setZoom(false)} />}

@@ -13,6 +13,8 @@ import {
 import { workCache } from '../storage/cache';
 import { ReaderWorkspace } from './ReaderWorkspace';
 import type { DocumentReader } from '../pdf/document-reader';
+import { annotationSession } from '../storage/annotations';
+import type { AnnotationSession } from './annotations';
 
 export function FileWorkbench() {
   const [state, setState] = useState<FileState>();
@@ -27,7 +29,10 @@ export function FileWorkbench() {
   const [pdfUrl, setPdfUrl] = useState('');
   const pdfUrlRef = useRef('');
   const [reader, setReader] = useState<DocumentReader>();
+  const [sourceName, setSourceName] = useState('');
   const readerRef = useRef<DocumentReader>();
+  const annotation = useRef<AnnotationSession>();
+  const [activeAnnotations, setActiveAnnotations] = useState<AnnotationSession>();
 
   useEffect(() => {
     setNative(!!pickers().open && !!pickers().save);
@@ -36,24 +41,43 @@ export function FileWorkbench() {
       .then((copy) => setLastPdf(copy?.pdfHandle))
       .catch(() => {});
     const protect = (event: BeforeUnloadEvent) => {
-      const current = session.current?.state;
-      if (current?.unexported || current?.cachePending || current?.status === 'saving') {
+      if (
+        [session.current?.state, annotation.current?.state].some(
+          (current) => current?.unexported || current?.cachePending || current?.status === 'saving',
+        )
+      ) {
         event.preventDefault();
         event.returnValue = '';
       }
     };
     const allowUpdate = (event: Event) => {
-      const current = session.current?.state;
-      if (current?.unexported || current?.cachePending || current?.status === 'saving') {
+      if (
+        [session.current?.state, annotation.current?.state].some(
+          (current) => current?.unexported || current?.cachePending || current?.status === 'saving',
+        )
+      ) {
         event.preventDefault();
       }
     };
     window.addEventListener('beforeunload', protect);
     window.addEventListener('fluido:before-update', allowUpdate);
+    const flush = () => {
+      void session.current?.flush();
+      void annotation.current?.flush();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       unsubscribe.current?.();
       window.removeEventListener('beforeunload', protect);
       window.removeEventListener('fluido:before-update', allowUpdate);
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibility);
+      void session.current?.close();
+      void annotation.current?.close();
       if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
       void readerRef.current?.close().catch(() => {});
     };
@@ -74,7 +98,7 @@ export function FileWorkbench() {
   };
 
   const mayReplace = () =>
-    !session.current?.state.unexported ||
+    (!session.current?.state.unexported && !annotation.current?.state.unexported) ||
     window.confirm('Ci sono modifiche non esportate. Vuoi sostituire la copia di lavoro corrente?');
 
   const openPdf = async (file: File, handle?: LocalHandle) => {
@@ -84,11 +108,16 @@ export function FileWorkbench() {
     const opened = await DocumentReader.open(file);
     // Un file non valido non chiude né sostituisce la sessione corrente.
     await session.current?.close();
+    await annotation.current?.close();
     unsubscribe.current?.();
     const next = new FileSession(document);
+    await next.restore(handle);
+    const notes = annotationSession(document);
+    await notes.restore(handle);
     session.current = next;
     unsubscribe.current = next.subscribe(setState);
-    await next.restore(handle);
+    annotation.current = notes;
+    setActiveAnnotations(notes);
     if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     pdfUrlRef.current = URL.createObjectURL(file);
     setPdfUrl(pdfUrlRef.current);
@@ -96,6 +125,7 @@ export function FileWorkbench() {
     void readerRef.current?.close().catch(() => {});
     readerRef.current = opened;
     setReader(opened);
+    setSourceName(file.name);
   };
 
   const choosePdf = () => {
@@ -132,13 +162,13 @@ export function FileWorkbench() {
   return (
     <section class="workbench" aria-labelledby="workbench-title">
       <div class="workbench-intro">
-        <p class="eyebrow">FASE 3 · LETTURA FLUIDA</p>
+        <p class="eyebrow">FASE 4 · ANNOTAZIONI</p>
         <h1 id="workbench-title">Il tuo PDF, i tuoi file</h1>
         <p class="intro-copy">
           Apri un PDF locale e leggilo con testo adattabile, figure e confronto con l’originale. Le
-          preferenze restano su questo dispositivo. Il JSON separato è ancora una verifica tecnica
-          di nota e pagina: evidenziazioni e salvataggio del punto di lettura arriveranno nelle
-          prossime fasi.
+          preferenze restano su questo dispositivo. Seleziona il testo per evidenziare o aggiungere
+          note: annotazioni e punto di lettura sono conservati in un unico JSON separato dal PDF. La
+          cache locale non sostituisce il file esportato.
         </p>
       </div>
 
@@ -231,176 +261,194 @@ export function FileWorkbench() {
           {error}
         </p>
       )}
-      {reader && <ReaderWorkspace key={pdfUrl} reader={reader} originalUrl={pdfUrl} />}
+      <div inert={busy}>
+        {reader && activeAnnotations && (
+          <ReaderWorkspace
+            fileName={sourceName}
+            key={pdfUrl}
+            reader={reader}
+            originalUrl={pdfUrl}
+            session={activeAnnotations}
+          />
+        )}
+      </div>
       {state ? (
-        <div class="workspace-grid">
-          <div class="document-panel">
-            <h2>Documento aperto</h2>
-            <p class="document-name" data-testid="text-pdf-name">
-              {state.data.document.fileName}
-            </p>
-            <dl class="document-details">
-              <dt>Dimensione</dt>
-              <dd>{state.data.document.size.toLocaleString('it-IT')} byte</dd>
-              <dt>Identità SHA-256</dt>
-              <dd class="hash" data-testid="text-pdf-hash">
-                {state.data.document.sha256}
-              </dd>
-              <dt>File associato</dt>
-              <dd>{state.fileName ?? 'Non collegato'}</dd>
-            </dl>
-            <a
-              class="text-link"
-              href={pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="link-original-pdf"
-            >
-              Apri originale nel visualizzatore del browser
-            </a>
-            <p class="small-note">
-              Nessun file viene inviato a un server. Il PDF non viene scritto.
-            </p>
-            <hr />
-            <h2>File dati separato</h2>
-            <div class="file-actions">
-              {native && (
+        <details
+          class="legacy-probe"
+          open={new URLSearchParams(window.location.search).get('view') === 'technical'}
+        >
+          <summary>Prova tecnica precedente (file sperimentale, non annotazioni)</summary>
+          <div class="workspace-grid">
+            <div class="document-panel">
+              <h2>Documento aperto</h2>
+              <p class="document-name" data-testid="text-pdf-name">
+                {state.data.document.fileName}
+              </p>
+              <dl class="document-details">
+                <dt>Dimensione</dt>
+                <dd>{state.data.document.size.toLocaleString('it-IT')} byte</dd>
+                <dt>Identità SHA-256</dt>
+                <dd class="hash" data-testid="text-pdf-hash">
+                  {state.data.document.sha256}
+                </dd>
+                <dt>File associato</dt>
+                <dd>{state.fileName ?? 'Non collegato'}</dd>
+              </dl>
+              <a
+                class="text-link"
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="link-original-pdf"
+              >
+                Apri originale nel visualizzatore del browser
+              </a>
+              <p class="small-note">
+                Nessun file viene inviato a un server. Il PDF non viene scritto.
+              </p>
+              <hr />
+              <h2>File dati separato</h2>
+              <div class="file-actions">
+                {native && (
+                  <button
+                    class="secondary-button"
+                    disabled={busy}
+                    data-testid="button-create-json"
+                    onClick={() =>
+                      void run(async () => {
+                        const handle = await pickers().save!({
+                          ...jsonOptions,
+                          suggestedName: sidecarName(state.data.document.fileName),
+                        });
+                        await session.current?.create(handle);
+                      })
+                    }
+                  >
+                    Crea e collega JSON
+                  </button>
+                )}
                 <button
                   class="secondary-button"
                   disabled={busy}
-                  data-testid="button-create-json"
+                  onClick={chooseJson}
+                  data-testid="button-import-json"
+                >
+                  {native ? 'Collega JSON esistente' : 'Importa JSON'}
+                </button>
+                {native && (
+                  <button
+                    class="secondary-button"
+                    disabled={busy}
+                    data-testid="button-import-manual"
+                    onClick={() => {
+                      if (mayReplace()) jsonInput.current?.click();
+                    }}
+                  >
+                    Importa senza scrittura automatica
+                  </button>
+                )}
+                {state.canReconnect && native && (
+                  <button
+                    class="secondary-button"
+                    disabled={busy}
+                    data-testid="button-reconnect"
+                    onClick={() => void run(async () => session.current?.reconnect())}
+                  >
+                    Ricollega / autorizza scrittura
+                  </button>
+                )}
+                <button
+                  class="primary-button"
+                  disabled={busy}
+                  data-testid="button-download-json"
                   onClick={() =>
                     void run(async () => {
-                      const handle = await pickers().save!({
-                        ...jsonOptions,
-                        suggestedName: sidecarName(state.data.document.fileName),
-                      });
-                      await session.current?.create(handle);
+                      await session.current?.flush();
+                      const current = session.current!;
+                      const data = current.state.data;
+                      downloadData(serializeSpike(data), sidecarName(data.document.fileName));
+                      await current.exported(data.revision);
                     })
                   }
                 >
-                  Crea e collega JSON
+                  Scarica JSON aggiornato
                 </button>
-              )}
-              <button
-                class="secondary-button"
-                disabled={busy}
-                onClick={chooseJson}
-                data-testid="button-import-json"
-              >
-                {native ? 'Collega JSON esistente' : 'Importa JSON'}
-              </button>
-              {native && (
-                <button
-                  class="secondary-button"
-                  disabled={busy}
-                  data-testid="button-import-manual"
-                  onClick={() => {
-                    if (mayReplace()) jsonInput.current?.click();
-                  }}
-                >
-                  Importa senza scrittura automatica
-                </button>
-              )}
-              {state.canReconnect && native && (
-                <button
-                  class="secondary-button"
-                  disabled={busy}
-                  data-testid="button-reconnect"
-                  onClick={() => void run(async () => session.current?.reconnect())}
-                >
-                  Ricollega / autorizza scrittura
-                </button>
-              )}
-              <button
-                class="primary-button"
-                disabled={busy}
-                data-testid="button-download-json"
-                onClick={() =>
-                  void run(async () => {
-                    await session.current?.flush();
-                    const current = session.current!;
-                    const data = current.state.data;
-                    downloadData(serializeSpike(data), sidecarName(data.document.fileName));
-                    await current.exported(data.revision);
-                  })
-                }
-              >
-                Scarica JSON aggiornato
-              </button>
+              </div>
+              <p class="small-note">
+                Per trasferire i dati copia PDF e JSON insieme. Nessuna sincronizzazione automatica.
+              </p>
             </div>
-            <p class="small-note">
-              Per trasferire i dati copia PDF e JSON insieme. Nessuna sincronizzazione automatica.
-            </p>
-          </div>
-          <div class="notes-panel">
-            <h2>Prova di scrittura e ripristino</h2>
-            <p class="small-note">
-              Formato sperimentale <code>fluido/file-spike v1</code>, non ancora il formato
-              annotazioni definitivo. La pagina è un valore di prova, non naviga nel PDF.
-            </p>
-            <label class="field-label" for="draft-note">
-              Nota di prova
-            </label>
-            <textarea
-              id="draft-note"
-              data-testid="input-note"
-              disabled={busy}
-              maxLength={100_000}
-              rows={7}
-              value={state.data.draftNote}
-              placeholder="Scrivi qui, poi riapri lo stesso PDF e il suo JSON."
-              onInput={(event) =>
-                session.current?.update(event.currentTarget.value, state.data.position.page)
-              }
-            />
-            <label class="field-label" for="draft-page">
-              Pagina di prova
-            </label>
-            <input
-              id="draft-page"
-              type="number"
-              data-testid="input-page"
-              min="1"
-              max="1000000"
-              step="1"
-              disabled={busy}
-              value={state.data.position.page}
-              onInput={(event) => {
-                const page = Number(event.currentTarget.value);
-                if (Number.isSafeInteger(page) && page >= 1 && page <= 1_000_000) {
-                  session.current?.update(state.data.draftNote, page);
+            <div class="notes-panel">
+              <h2>Prova di scrittura e ripristino</h2>
+              <p class="small-note">
+                Formato sperimentale <code>fluido/file-spike v1</code>, non ancora il formato
+                annotazioni definitivo. La pagina è un valore di prova, non naviga nel PDF.
+              </p>
+              <label class="field-label" for="draft-note">
+                Nota di prova
+              </label>
+              <textarea
+                id="draft-note"
+                data-testid="input-note"
+                disabled={busy}
+                maxLength={100_000}
+                rows={7}
+                value={state.data.draftNote}
+                placeholder="Scrivi qui, poi riapri lo stesso PDF e il suo JSON."
+                onInput={(event) =>
+                  session.current?.update(event.currentTarget.value, state.data.position.page)
                 }
-              }}
-            />
-            <div
-              role="status"
-              aria-live="polite"
-              class={`save-state state-${state.status}`}
-              data-testid="status-persistence"
-            >
-              <strong>{state.mode === 'automatic' ? 'File collegato' : 'Download manuale'}</strong>
-              <p>{state.message}</p>
-              <p class="cache-note">{state.cacheMessage}</p>
+              />
+              <label class="field-label" for="draft-page">
+                Pagina di prova
+              </label>
+              <input
+                id="draft-page"
+                type="number"
+                data-testid="input-page"
+                min="1"
+                max="1000000"
+                step="1"
+                disabled={busy}
+                value={state.data.position.page}
+                onInput={(event) => {
+                  const page = Number(event.currentTarget.value);
+                  if (Number.isSafeInteger(page) && page >= 1 && page <= 1_000_000) {
+                    session.current?.update(state.data.draftNote, page);
+                  }
+                }}
+              />
+              <div
+                role="status"
+                aria-live="polite"
+                class={`save-state state-${state.status}`}
+                data-testid="status-persistence"
+              >
+                <strong>
+                  {state.mode === 'automatic' ? 'File collegato' : 'Download manuale'}
+                </strong>
+                <p>{state.message}</p>
+                <p class="cache-note">{state.cacheMessage}</p>
+              </div>
+              <p class="small-note">
+                Le scritture partono dopo 700 ms senza modifiche. Se il browser è chiuso prima della
+                conferma, gli ultimi cambiamenti possono andare persi.
+              </p>
             </div>
-            <p class="small-note">
-              Le scritture partono dopo 700 ms senza modifiche. Se il browser è chiuso prima della
-              conferma, gli ultimi cambiamenti possono andare persi.
-            </p>
           </div>
-        </div>
+        </details>
       ) : (
         <div class="start-instructions">
-          <h2>Come eseguire la prova</h2>
+          <h2>Come iniziare</h2>
           <ol>
             <li>Apri un PDF locale con un layout semplice, a colonna singola.</li>
             <li>
               Controlla il testo ricostruito, mostra le figure e confronta la pagina originale.
             </li>
-            <li>Per la prova di persistenza, crea o importa un JSON separato.</li>
-            <li>Modifica la nota e la pagina di prova.</li>
-            <li>Attendi la conferma di scrittura, oppure scarica il JSON aggiornato.</li>
-            <li>Ricarica l’app e seleziona gli stessi file per controllare il ripristino.</li>
+            <li>Seleziona un passaggio e premi Evidenzia oppure Aggiungi nota.</li>
+            <li>Usa la colonna o il pannello Annotazioni per modificare e ritrovare i passaggi.</li>
+            <li>Crea e collega il file annotazioni, oppure scarica il JSON aggiornato.</li>
+            <li>Su un altro dispositivo apri lo stesso PDF e importa il suo JSON.</li>
           </ol>
           <p class="small-note">
             Puoi usare il selettore standard anche se i permessi del browser impediscono quello

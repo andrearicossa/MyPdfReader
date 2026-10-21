@@ -1,11 +1,10 @@
 # Fluido — Lettore PDF in modalità fluida
 
 Lettore PDF leggero e open source: il testo del documento si legge come un ebook, con font
-regolabile. Il PDF originale non viene mai modificato. Il progetto prevede evidenziazioni,
-note e posizione di lettura in un file JSON separato, portabile su altri dispositivi;
-queste funzioni non sono ancora disponibili nella vista fluida.
+regolabile. Il PDF originale non viene mai modificato. Evidenziazioni, note e posizione
+di lettura sono conservate in un file JSON separato, portabile su altri dispositivi.
 
-**Stato: Fase 3 (lettura fluida, non ancora annotazioni e segnalibro persistente).**
+**Stato: Fase 4, versione `0.3.0-annotations.1` (annotazioni e punto di lettura).**
 La PWA estrae nel worker PDF.js solo la pagina selezionata, senza elaborare le altre
 in anticipo. Mantiene una cache LRU di 8 pagine visitate e ricostruisce paragrafi,
 titoli, box rettangolari semplici e citazioni rientrate con attribuzione esplicita.
@@ -15,10 +14,15 @@ Include confronto con
 l'Originale e avvisi per layout non supportati. La vista principale ha scorrimento
 progressivo, finestra di cinque pagine, tipografia regolabile e figure con zoom.
 Le preferenze globali sono in un database IndexedDB separato; in caso di errore
-restano temporanee con avviso. Annotazioni vere e posizione di lettura persistente
-sono ancora da implementare.
-La nota e la pagina del pannello di persistenza rimangono dati di prova della Fase 1.
-Il formato dati `fluido/file-spike v1` è sperimentale, non il formato definitivo MVP.
+restano temporanee con avviso. Selezionando il testo è possibile evidenziare in quattro
+colori o aggiungere una nota, anche nei box e nelle citazioni. La colonna annotazioni
+desktop diventa un pannello sotto la lettura sui viewport stretti; permette salto al
+passaggio, modifica e cancellazione confermata. Le ancore sono testuali, non in pixel;
+quelle non risolte o ambigue conservano la nota senza applicare evidenziazioni arbitrarie.
+La posizione nel testo o nella figura viene salvata nello stesso JSON.
+Il vecchio pannello della Fase 1 è una prova tecnica separata, collassata per default:
+il suo formato `fluido/file-spike v1` non è compatibile con `fluido/annotations v1`.
+Il relativo database non viene migrato né sovrascritto.
 
 La scrittura diretta è disponibile solo se il browser espone le API e l'utente concede i
 permessi; altrove importazione/download sono espliciti, con avviso prima dell'uso.
@@ -35,6 +39,26 @@ come PDF ed è ancora da verificare. Nessun OCR o supporto a layout complessi.
 Per la vista fluida: [ADR-004](docs/ADR-004-lettura-fluida.md) e
 [QA Fase 3](docs/qa-fase3.md). Il sito Azure è il riferimento funzionale;
 l'anteprima incorporata può impedire l'avvio del worker PDF.
+Per le annotazioni: [ADR-005](docs/ADR-005-annotazioni.md) e
+[QA Fase 4](docs/qa-fase4.md). La Fase 5 deve ancora finalizzare la persistenza e
+le migrazioni: il riuso dell'adattatore della Fase 1 non chiude tutti i suoi gate.
+
+## Annotare e portare le note su un altro dispositivo
+
+1. Aprire il PDF e selezionare un passaggio all'interno della stessa pagina.
+2. Scegliere il colore e premere **Evidenzia** o **Aggiungi nota**.
+3. Modificare testo e colore nel pannello annotazioni; le modifiche avviano il
+   salvataggio dopo 700 ms di inattività. Lo stato distingue cache e file.
+4. Dove disponibile, **Crea file annotazioni** collega un nuovo JSON vuoto per la
+   scrittura automatica. Per uno esistente usare **Collega file annotazioni**;
+   alla riapertura potrebbe essere necessaria un'autorizzazione esplicita.
+5. Altrove usare **Scarica annotazioni** e verificare che il browser abbia
+   conservato il file. Su un altro dispositivo aprire lo stesso PDF e importare
+   il JSON. Serve la coppia di file; non c'è sincronizzazione tra dispositivi.
+
+La cache del browser non sostituisce l'esportazione. Il file unico contiene
+annotazioni e posizione; font e tema restano preferenze del dispositivo.
+Le pagine con layout dichiarato non affidabile non accettano nuove annotazioni.
 
 ## Requisiti
 

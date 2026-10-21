@@ -39,7 +39,7 @@ test('adattatore con handle reali OPFS: scrive, riapre e rileva conflitti', asyn
     },
     [...simplePdf()],
   );
-  await page.goto('/');
+  await page.goto('/?view=technical');
   await expect(page.getByTestId('status-capability')).toContainText(
     'Scrittura diretta disponibile',
   );

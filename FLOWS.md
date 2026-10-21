@@ -1,5 +1,28 @@
 # Main flows
 
+## Fase 4: inventario prima delle modifiche
+
+- Selezionare un passaggio nel testo, in box/citazioni/attribuzioni; evidenziare
+  in quattro colori o aggiungere una nota. Selezioni su più pagine: rifiuto esplicito.
+- Colonna annotazioni desktop, pannello sotto la lettura su telefono; testo della
+  nota modificabile, cambio colore, salto al passaggio, eliminazione confermata.
+- Evidenziazioni sovrapposte, selezione inversa e da tastiera; testo con Unicode
+  e contenuto simile a HTML sempre reso come testo, mai interpretato.
+- Ancore: offset e citazione con contesto; riallineamento univoco soltanto,
+  ancore ambigue/non risolte segnalate e mai applicate silenziosamente.
+- Cambio carattere/dimensione/viewport e finestra virtuale: stessa citazione
+  evidenziata; lista note raggiunge pagine non ancora estratte senza preanalisi.
+- Posizione automatica nel nuovo stato: ripristino dopo riapertura/importazione,
+  inclusa pagina non iniziale. Nessuna autoscrittura della posizione iniziale
+  prima del ripristino; modifiche pendenti protette da update PWA/cambio PDF.
+- JSON annotazioni dedicato, fingerprint verificato; export/import tra contesti
+  puliti con font e schermi diversi. Vecchio DB e file-spike invariati, accessibili
+  soltanto nella prova tecnica separata; nessuna migrazione distruttiva.
+- Regressione completa Fasi 1–3: PDF immutato, import/download, errori/conflitti,
+  PWA/offline, preferenze, pagine progressive, Originale e zoom.
+- Visuale: 1280/768/375 px, finestra bassa, tutti i temi, pannello vuoto/popolato,
+  editor, cancellazione, errore import e annotazione non risolta.
+
 ## Esito Fase 3 (21/10/2026)
 
 Build di produzione verificata da installazione pulita: 66 test unitari superati,
@@ -69,7 +92,7 @@ nuovo pageerror. Dettagli e limiti in `docs/qa-fase3.md`.
 ## Aggiornamento e pubblicazione
 
 - Steps: aggiornare PWA con dati pendenti, poi dopo download; aprire link live in contesto vuoto.
-- Expect: aggiornamento protetto; nuova versione 0.2.0-reader.1, stessi flussi su Azure.
+- Expect: aggiornamento protetto; versione corrente 0.3.0-annotations.1, stessi flussi su Azure.
 - Preview: verificare link restituito separatamente; eventuali limiti iframe dichiarati.
 
 ## Verifica locale del 20/10/2026

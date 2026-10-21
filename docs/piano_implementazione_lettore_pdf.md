@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **Fasi 0–3 autorizzate; gate dispositivi reali aperto** · Aggiornamento: 21/10/2026
+Stato: **Fasi 0–4 autorizzate; gate dispositivi reali aperto** · Aggiornamento: 21/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -13,7 +13,7 @@ Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MI
 | UI               | Preact + CSS                                                  | Bundle leggero; scelta definitiva, nessun framework pesante  |
 | PDF              | `pdfjs-dist` (Apache-2.0), worker separato                    | Rendering pagine, estrazione testo e immagini                |
 | Stato locale     | IndexedDB (API native, nessuna libreria aggiuntiva)           | Cache locale e preferenze globali indipendenti               |
-| Validazione file | JSON Schema + `ajv` (o `zod`)                                 | Import sicuro del file associato                             |
+| Validazione file | Validatore runtime TypeScript, senza dipendenze aggiuntive    | Import sicuro e limiti espliciti; decisione ADR-005          |
 | Test             | Vitest (unità), Playwright (E2E su Chromium, WebKit, Firefox) | Copertura dei criteri di accettazione                        |
 | CI/CD            | GitHub Actions → Azure Static Web Apps (Free)                 | Deploy automatico, ambienti di anteprima per le PR           |
 
@@ -39,23 +39,26 @@ Regola: `core` non importa nulla da `storage` o `ui`; è il nucleo riutilizzabil
 
 ## 3. Formato del file associato (v1)
 
-File `<nomepdf>.annotations.json`, unico per documento:
+File `<nomepdf>.annotations.json`, unico per documento. Schema implementato nella
+Fase 4 ([ADR-005](ADR-005-annotazioni.md)); sostituisce la bozza iniziale del piano,
+non il file sperimentale della Fase 1:
 
 ```json
 {
-  "schema": "pdf-fluid-reader/annotations",
+  "schema": "fluido/annotations",
   "version": 1,
+  "normalization": "fluido-text/2",
   "document": {
-    "fingerprint": "<pdf.js fingerprint>",
     "sha256": "...",
     "fileName": "libro.pdf",
-    "pageCount": 312
+    "size": 123456
   },
-  "position": { "page": 42, "offset": 1834, "quote": "testo di contesto…", "updatedAt": "..." },
+  "revision": 12,
+  "draftNote": "",
+  "position": { "page": 42, "offset": 1834 },
   "annotations": [
     {
       "id": "uuid",
-      "type": "highlight|note",
       "color": "yellow",
       "anchor": {
         "page": 42,
@@ -69,14 +72,18 @@ File `<nomepdf>.annotations.json`, unico per documento:
       "createdAt": "...",
       "updatedAt": "..."
     }
-  ],
-  "updatedAt": "..."
+  ]
 }
 ```
 
 - Ancoraggio indipendente da font e schermo: pagina PDF + offset nel testo estratto + citazione con contesto per il riallineamento.
 - Il PDF non viene mai modificato.
 - Le preferenze di lettura **non** sono nel file (restano globali nel dispositivo).
+- La posizione può avere `anchor` con citazione e contesto oppure `figure` e
+  `fraction` relativi alla figura. Non usa pixel. `draftNote` è uno slot interno
+  vuoto dell'adattatore, non una nota globale distinta.
+- `revision` gestisce le scritture della copia di lavoro; la strategia definitiva
+  di migrazione e recupero dei conflitti rimane una verifica della Fase 5.
 
 ## 4. Fasi e attività
 
@@ -148,12 +155,25 @@ sviluppo umano, non tempi di esecuzione automatica.
 
 ### Fase 4 – Annotazioni (≈ 2 settimane)
 
+Implementazione `0.3.0-annotations.1`: [ADR-005](ADR-005-annotazioni.md) e
+[QA Fase 4](qa-fase4.md). Selezione nel testo, box, citazioni e attribuzioni;
+quattro colori, sovrapposizioni, note modificabili e cancellazione confermata.
+La posizione è ora persistente nel JSON delle annotazioni e nella sua cache,
+non soltanto in memoria. Il confronto Originale conserva la pagina; non il suo
+zoom o scorrimento interno. La vecchia prova file rimane separata.
+Le stime in settimane si riferiscono allo sviluppo umano.
+
 - Selezione testo → evidenziazione (colori), nota a margine (desktop) o in pannello (mobile).
 - Elenco note con salto al passaggio, modifica ed eliminazione.
 - Ancoraggio e riallineamento dopo cambio font o dispositivo.
 - Salvataggio automatico del punto di lettura.
 
 ### Fase 5 – Persistenza (≈ 1–2 settimane)
+
+Da finalizzare. La Fase 4 riutilizza già cache, scrittura diretta, ripiego,
+controllo del PDF e blocco dei conflitti dell'adattatore della Fase 1, con debounce
+700 ms. Questo non chiude la strategia definitiva di migrazione o recupero,
+le prove temporali di sistema né il gate dei file esterni su dispositivi reali.
 
 - Cache in IndexedDB sempre aggiornata (debounce ≤ 2 s dall'ultima modifica).
 - Adattatore File System Access: scrittura automatica nel file associato.
@@ -196,13 +216,13 @@ Ogni test riporta nel nome l'identificativo del criterio dell'analisi, da AC-01 
 
 ## 7. Rischi principali
 
-| Rischio                                            | Mitigazione                                                                |
-| -------------------------------------------------- | -------------------------------------------------------------------------- |
-| Scrittura automatica non disponibile su mobile/iOS | Ripiego dichiarato (D2), indicatore visibile, valutare Tauri in futuro     |
-| Ricostruzione del testo imprecisa                  | Perimetro limitato a layout semplici, vista Originale sempre disponibile   |
-| Ancoraggi persi su altro dispositivo               | Citazione con contesto + fingerprint del PDF; test di portabilità dedicato |
-| PDF grandi lenti su telefono                       | Elaborazione per pagine in worker, rendering virtualizzato                 |
-| Pulizia dati del browser (iOS)                     | Avviso di esportare; richiesta `navigator.storage.persist()`               |
+| Rischio                                            | Mitigazione                                                                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| Scrittura automatica non disponibile su mobile/iOS | Ripiego dichiarato (D2), indicatore visibile, valutare Tauri in futuro      |
+| Ricostruzione del testo imprecisa                  | Perimetro limitato a layout semplici, vista Originale sempre disponibile    |
+| Ancoraggi persi su altro dispositivo               | Citazione con contesto + hash SHA-256 del PDF; test di portabilità dedicato |
+| PDF grandi lenti su telefono                       | Elaborazione per pagine in worker, rendering virtualizzato                  |
+| Pulizia dati del browser (iOS)                     | Avviso di esportare; richiesta `navigator.storage.persist()`                |
 
 ## 8. Fuori dall'MVP
 
@@ -210,8 +230,10 @@ OCR, multi-colonna, Google Drive e OneDrive, sincronizzazione, app Tauri, prefer
 
 ## 9. Approvazione
 
-L'analisi tecnica è approvata: tutte le decisioni aperte (D1–D9) sono chiuse. Per il piano resta solo l'approvazione esplicita qui di seguito.
+L'analisi tecnica è approvata: tutte le decisioni aperte (D1–D9) sono chiuse.
+L'utente ha autorizzato progressivamente le Fasi 0, 1, 2, 3 e 4 nella conversazione.
+I gate su documenti e dispositivi reali restano aperti anche dopo i test automatici.
 
-- [ ] Approvato senza modifiche.
-- [ ] Approvato con modifiche da recepire.
-- [ ] Da rivedere.
+- [x] Fasi 0–4 autorizzate.
+- [ ] Fase 5: avvio e finalizzazione della persistenza.
+- [ ] Gate dispositivi reali e corpus dell'utente completato.

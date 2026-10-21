@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
     Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true });
     Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true });
   });
-  await page.goto('/');
+  await page.goto('/?view=technical');
 });
 
 test('PDF invariato, download e import su contesto pulito (AC-02, AC-18, AC-20, AC-22)', async ({
@@ -39,7 +39,7 @@ test('PDF invariato, download e import su contesto pulito (AC-02, AC-18, AC-20, 
 
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
   const other = await context.newPage();
-  await other.goto('/');
+  await other.goto('/?view=technical');
   await other.getByTestId('input-pdf').setInputFiles({ ...upload, name: 'rinominato.pdf' });
   await expect(other.getByTestId('button-open-pdf')).toBeEnabled();
   await expect(other.getByTestId('text-pdf-name')).toHaveText('rinominato.pdf');

@@ -2,8 +2,19 @@ import { createSpike, parseSpike, serializeSpike, type SpikeData } from '../core
 import { workCache, type WorkCache, type WorkCopy } from './cache';
 import type { LocalHandle } from './files';
 
-export type FileState = {
-  data: SpikeData;
+export type SessionData = Pick<SpikeData, 'document' | 'revision' | 'draftNote' | 'position'>;
+export type DataCodec<T> = {
+  create(document: SpikeData['document']): T;
+  parse(text: string, hash: string): T;
+  serialize(data: T): string;
+};
+const spikeCodec: DataCodec<SpikeData> = {
+  create: createSpike,
+  parse: parseSpike,
+  serialize: serializeSpike,
+};
+export type FileState<T = SpikeData> = {
+  data: T;
   mode: 'manual' | 'automatic';
   status: 'export' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict';
   message: string;
@@ -14,21 +25,27 @@ export type FileState = {
   cachePending: boolean;
 };
 
-export class FileSession {
-  state: FileState;
+export class FileSession<T extends SessionData = SpikeData> {
+  state: FileState<T>;
   private handle?: LocalHandle;
   private pdfHandle?: LocalHandle;
   private rememberedHandle?: LocalHandle;
   private baseline?: string;
   private timer?: ReturnType<typeof setTimeout>;
   private queue = Promise.resolve();
-  private listeners = new Set<(state: FileState) => void>();
-  private cache: WorkCache;
+  private listeners = new Set<(state: FileState<T>) => void>();
+  private cache: WorkCache<T>;
+  private codec: DataCodec<T>;
 
-  constructor(document: SpikeData['document'], cache: WorkCache = workCache) {
+  constructor(
+    document: SpikeData['document'],
+    cache: WorkCache<T> = workCache as unknown as WorkCache<T>,
+    codec: DataCodec<T> = spikeCodec as unknown as DataCodec<T>,
+  ) {
     this.cache = cache;
+    this.codec = codec;
     this.state = {
-      data: createSpike(document),
+      data: codec.create(document),
       mode: 'manual',
       status: 'export',
       message: 'Nessun file associato. Crea un nuovo file oppure importane uno.',
@@ -39,7 +56,7 @@ export class FileSession {
     };
   }
 
-  subscribe(listener: (state: FileState) => void): () => void {
+  subscribe(listener: (state: FileState<T>) => void): () => void {
     this.listeners.add(listener);
     listener({ ...this.state });
     return () => this.listeners.delete(listener);
@@ -54,7 +71,10 @@ export class FileSession {
     try {
       const cached = await this.cache.read(this.state.data.document.sha256);
       if (cached) {
-        this.state.data = parseSpike(serializeSpike(cached.data), this.state.data.document.sha256);
+        this.state.data = this.codec.parse(
+          this.codec.serialize(cached.data),
+          this.state.data.document.sha256,
+        );
         this.baseline = cached.baseline;
         this.rememberedHandle = cached.sidecarHandle;
         this.pdfHandle = pdfHandle ?? cached.pdfHandle;
@@ -74,11 +94,15 @@ export class FileSession {
   }
 
   update(note: string, page: number) {
+    this.change((data) => ({ ...data, draftNote: note, position: { page } }));
+  }
+
+  change(update: (data: T) => T) {
+    const next = update(this.state.data);
+    if (next === this.state.data) return;
     this.state.data = {
-      ...this.state.data,
+      ...next,
       revision: this.state.data.revision + 1,
-      draftNote: note,
-      position: { page },
     };
     this.state.unexported = true;
     this.state.cachePending = true;
@@ -93,7 +117,7 @@ export class FileSession {
   }
 
   private async remember(): Promise<void> {
-    const copy: WorkCopy = {
+    const copy: WorkCopy<T> = {
       data: this.state.data,
       unexported: this.state.unexported,
       baseline: this.baseline,
@@ -126,7 +150,7 @@ export class FileSession {
       }
       if (!this.state.unexported) return;
       const data = this.state.data;
-      const text = serializeSpike(data);
+      const text = this.codec.serialize(data);
       this.state.status = 'saving';
       this.state.message = 'Scrittura del file in corso…';
       this.emit();
@@ -196,7 +220,7 @@ export class FileSession {
   async import(text: string, handle?: LocalHandle) {
     await this.flush();
     if (handle) await this.safeHandle(handle);
-    const data = parseSpike(text, this.state.data.document.sha256);
+    const data = this.codec.parse(text, this.state.data.document.sha256);
     // Il chiamante deve ottenere conferma prima di sostituire la copia corrente.
     this.state.data = data;
     this.handle = this.rememberedHandle = handle;
@@ -222,7 +246,7 @@ export class FileSession {
       throw new Error('Permesso negato. Puoi ancora scaricare il JSON.');
     await this.flush();
     const current = await (await handle.getFile()).text();
-    parseSpike(current, this.state.data.document.sha256);
+    this.codec.parse(current, this.state.data.document.sha256);
     if (current !== this.baseline) {
       throw new Error(
         'Il file esterno è cambiato. Scarica la copia locale e importa il JSON esterno.',

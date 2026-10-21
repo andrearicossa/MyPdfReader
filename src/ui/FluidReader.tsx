@@ -2,9 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ReadingPage } from '../core/reading-model';
 import { defaultPreferences, readingWindow } from '../core/reading-preferences';
 import type { DocumentReader } from '../pdf/document-reader';
-import { ReadingText, PageOriginal } from './EnginePanel';
+import { PageOriginal } from './EnginePanel';
 import { FlowFigure } from './FlowFigure';
 import { useReadingPreferences } from './preferences';
+import { resolveAnchor, type ReadingPosition, type ResolvedAnchor } from '../core/annotations';
+import { useAnnotations } from './annotations';
+import { AnnotatedText, type PageHighlight } from './AnnotatedText';
+import { AnnotationPanel, AnnotationSelection } from './AnnotationPanel';
+import { selectedAnchor, visiblePosition, scrollToPosition } from './text-selection';
 
 type Anchor = { page: number; block: string; fraction: number };
 export function FluidReader({
@@ -15,6 +20,7 @@ export function FluidReader({
   originalUrl: string;
 }) {
   const { preferences, update, storage, ready } = useReadingPreferences();
+  const annotations = useAnnotations();
   const [pages, setPages] = useState<ReadingPage[]>([]);
   const [current, setCurrent] = useState(1);
   const [draft, setDraft] = useState('1');
@@ -27,11 +33,15 @@ export function FluidReader({
   const locked = useRef(false);
   const restore = useRef<Anchor>();
   const savedAnchor = useRef<Anchor>();
+  const savedTextPosition = useRef<ReadingPosition>();
   const lastScroll = useRef(0);
   const layoutWidth = useRef(0);
   const scrollFrame = useRef(0);
   const scrollIntent = useRef(false);
   const draftDirty = useRef(false);
+  const targetPosition = useRef<ReadingPosition>();
+  const focusOnRestore = useRef(false);
+  const navigationSeen = useRef(-1);
   const failedRequest = useRef({ number: 1, mode: 'jump' as 'jump' | 'next' | 'previous' });
   const capture = (): Anchor | undefined => {
     const host = root.current;
@@ -52,8 +62,23 @@ export function FluidReader({
       host = root.current;
     if (!host || original) return;
     layoutWidth.current = host.clientWidth;
+    if (targetPosition.current && pages.some((p) => p.page === targetPosition.current!.page)) {
+      scrollToPosition(host, targetPosition.current);
+      targetPosition.current = undefined;
+      restore.current = undefined;
+      lastScroll.current = host.scrollTop;
+      savedAnchor.current = capture();
+      savedTextPosition.current = visiblePosition(host, pages);
+      if (focusOnRestore.current) {
+        focusOnRestore.current = false;
+        host.focus({ preventScroll: true });
+        host.parentElement?.scrollIntoView({ block: 'start' });
+      }
+      return;
+    }
     if (!anchor) {
       savedAnchor.current = capture();
+      savedTextPosition.current = visiblePosition(host, pages);
       return;
     }
     const block = [...host.querySelectorAll<HTMLElement>('[data-flow-page]')]
@@ -67,12 +92,18 @@ export function FluidReader({
     lastScroll.current = host.scrollTop;
     restore.current = undefined;
     savedAnchor.current = capture();
+    savedTextPosition.current = visiblePosition(host, pages);
   }, [pages, preferences, original]);
   useEffect(() => {
     const host = root.current!;
     const observer = new ResizeObserver(() => {
       if (host.clientWidth === 0 || host.clientWidth === layoutWidth.current) return;
       layoutWidth.current = host.clientWidth;
+      if (savedTextPosition.current && !host.hidden) {
+        scrollToPosition(host, savedTextPosition.current);
+        lastScroll.current = host.scrollTop;
+        return;
+      }
       const anchor = savedAnchor.current;
       if (!anchor || host.hidden) return;
       const block = [...host.querySelectorAll<HTMLElement>('[data-flow-page]')]
@@ -88,7 +119,13 @@ export function FluidReader({
     observer.observe(host);
     return () => observer.disconnect();
   }, [reader]);
-  const load = async (number: number, mode: 'jump' | 'next' | 'previous', force = false) => {
+  const load = async (
+    number: number,
+    mode: 'jump' | 'next' | 'previous',
+    force = false,
+    position?: ReadingPosition,
+    annotationId?: string,
+  ) => {
     if (number < 1 || number > reader.pageCount) return;
     if (mode !== 'jump' && locked.current) return;
     scrollIntent.current = false;
@@ -103,7 +140,10 @@ export function FluidReader({
       setDraft(String(number));
       setError('');
       restore.current = undefined;
+      targetPosition.current = position;
+      focusOnRestore.current = Boolean(annotationId);
       if (original && !force) {
+        annotations.position({ page: number, offset: 0 });
         setLoading(false);
         return;
       }
@@ -118,11 +158,56 @@ export function FluidReader({
     try {
       const result = await reader.extractPage(number, controller.signal);
       if (controller.signal.aborted || id !== generation.current) return;
-      if (mode !== 'jump') restore.current = capture();
+      if (mode !== 'jump') {
+        restore.current = capture();
+        if (root.current) targetPosition.current = visiblePosition(root.current, pages);
+      }
+      if (position?.anchor) {
+        const resolved = resolveAnchor(result.page.text, position.anchor);
+        targetPosition.current =
+          'start' in resolved
+            ? { ...position, offset: resolved.start }
+            : { page: number, offset: 0 };
+        if (!('start' in resolved))
+          annotations.setSelectionError(
+            'Punto di lettura non risolto: ripristinata la pagina salvata.',
+          );
+      }
+      if (
+        position?.figure &&
+        !result.page.blocks.some((b) => b.kind === 'figure' && b.id === position.figure)
+      ) {
+        targetPosition.current = { page: number, offset: 0 };
+        annotations.setSelectionError(
+          'Figura del punto di lettura non trovata: ripristinata la pagina salvata.',
+        );
+      }
+      if (
+        position &&
+        !position.anchor &&
+        !position.figure &&
+        position.offset > result.page.text.length
+      ) {
+        targetPosition.current = { page: number, offset: 0 };
+        annotations.setSelectionError(
+          'Punto di lettura fuori dal testo: ripristinata la pagina salvata.',
+        );
+      }
+      if (annotationId) {
+        const note = annotations.session.state.data.annotations.find((n) => n.id === annotationId);
+        if (note && note.anchor.page === number) {
+          const resolved = resolveAnchor(result.page.text, note.anchor);
+          targetPosition.current = {
+            page: number,
+            offset: 'start' in resolved ? resolved.start : 0,
+          };
+        }
+      }
       setPages((old) => (mode === 'jump' ? [result.page] : readingWindow(old, result.page, mode)));
       if (mode === 'jump') {
         if (root.current) root.current.scrollTop = 0;
         lastScroll.current = 0;
+        annotations.position(targetPosition.current ?? { page: number, offset: 0 });
       }
     } catch (cause) {
       if (!controller.signal.aborted && id === generation.current)
@@ -135,23 +220,104 @@ export function FluidReader({
     }
   };
   useEffect(() => {
-    void load(1, 'jump');
+    const requested = annotations.navigation;
+    const position =
+      navigationSeen.current === -1 ? annotations.session.state.data.position : requested.position;
+    navigationSeen.current = requested.token;
+    const page = Math.max(1, Math.min(reader.pageCount, position.page));
+    if (page !== position.page)
+      annotations.setSelectionError(
+        'Pagina salvata fuori dal documento: aperta la pagina valida più vicina. Le note restano conservate.',
+      );
+    setOriginal(false);
+    void load(
+      page,
+      'jump',
+      true,
+      page === position.page ? position : { page, offset: 0 },
+      requested.annotationId,
+    );
     return () => {
       abort.current?.abort();
       generation.current++;
       cancelAnimationFrame(scrollFrame.current);
     };
     // Il workspace viene ricreato per ogni nuovo documento.
-  }, [reader]);
+  }, [reader, annotations.navigation.token]);
+  const highlights = new Map<number, PageHighlight[]>();
+  const statuses: Record<string, ResolvedAnchor['status']> = {};
+  for (const a of annotations.data.annotations)
+    if (a.anchor.page > reader.pageCount) statuses[a.id] = 'missing';
+  for (const page of pages) {
+    const items: PageHighlight[] = [];
+    for (const annotation of annotations.data.annotations.filter(
+      (a) => a.anchor.page === page.page,
+    )) {
+      const resolved = resolveAnchor(page.text, annotation.anchor);
+      statuses[annotation.id] = page.supported ? resolved.status : 'missing';
+      if ('start' in resolved && page.supported) items.push({ annotation, resolved });
+    }
+    highlights.set(page.page, items);
+  }
+  useEffect(() => {
+    annotations.report(statuses);
+  }, [pages, annotations.data.annotations]);
+  useEffect(() => {
+    let pointerSelecting = false;
+    const onSelection = () => {
+      if (!root.current || pointerSelecting) return;
+      try {
+        const anchor = selectedAnchor(root.current, pages);
+        if (anchor) {
+          annotations.setSelection(anchor);
+          annotations.setSelectionError('');
+        }
+      } catch (e) {
+        annotations.setSelection(undefined);
+        annotations.setSelectionError(e instanceof Error ? e.message : 'Selezione non valida.');
+      }
+    };
+    const down = (event: PointerEvent) => {
+      pointerSelecting =
+        event.button === 0 && root.current?.contains(event.target as Node) === true;
+    };
+    const up = () => {
+      if (!pointerSelecting) return;
+      pointerSelecting = false;
+      onSelection();
+    };
+    document.addEventListener('selectionchange', onSelection);
+    document.addEventListener('pointerdown', down);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+    window.addEventListener('blur', up);
+    return () => {
+      document.removeEventListener('selectionchange', onSelection);
+      document.removeEventListener('pointerdown', down);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      window.removeEventListener('blur', up);
+    };
+  }, [pages]);
   const start = pages[0]?.page ?? current;
   const end = pages.at(-1)?.page ?? current;
   const changePreferences = (change: Parameters<typeof update>[0]) => {
-    if (!original) restore.current = capture();
+    if (!original) {
+      restore.current = capture();
+      if (root.current) targetPosition.current = visiblePosition(root.current, pages);
+    }
     update(change);
   };
   const showOriginal = (number?: number) => {
     cancelAnimationFrame(scrollFrame.current);
     restore.current = capture();
+    if (root.current) {
+      const p = visiblePosition(root.current, pages);
+      if (p) {
+        annotations.position(p);
+        targetPosition.current = p;
+      }
+    }
     abort.current?.abort();
     generation.current++;
     locked.current = false;
@@ -182,9 +348,12 @@ export function FluidReader({
       }
       const previous = lastScroll.current;
       savedAnchor.current = capture();
+      savedTextPosition.current = visiblePosition(host, pages);
       lastScroll.current = host.scrollTop;
       if (locked.current) return;
       if (!scrollIntent.current) return;
+      const position = visiblePosition(host, pages);
+      if (position) annotations.position(position);
       if (
         host.scrollTop > previous &&
         host.scrollHeight - host.clientHeight - host.scrollTop < 160 &&
@@ -199,7 +368,7 @@ export function FluidReader({
     <section class="fluid-reader" aria-labelledby="fluid-title" data-testid="fluid-reader">
       <div class="flow-heading">
         <div>
-          <p class="eyebrow">FASE 3 · LETTURA FLUIDA</p>
+          <p class="eyebrow">FASE 4 · LETTURA E ANNOTAZIONI</p>
           <h2 id="fluid-title">Il testo, al tuo ritmo</h2>
         </div>
         <p class="small-note" data-testid="flow-current">
@@ -392,118 +561,126 @@ export function FluidReader({
           oppure apri Originale.
         </p>
       )}
-      {original && (
-        <div class="flow-original-view">
-          <PageOriginal key={current} reader={reader} number={current} />
-        </div>
-      )}
-      <div
-        ref={root}
-        class="flow-viewport"
-        data-testid="flow-viewport"
-        hidden={original}
-        tabIndex={0}
-        role="region"
-        aria-label="Testo a scorrimento continuo"
-        onScroll={scroll}
-        onWheel={(event) => {
-          scrollIntent.current = true;
-          if (event.deltaY < 0 && event.currentTarget.scrollTop < 60 && start > 1)
-            void load(start - 1, 'previous');
-          else if (
-            event.deltaY > 0 &&
-            event.currentTarget.scrollHeight -
-              event.currentTarget.clientHeight -
-              event.currentTarget.scrollTop <
-              160 &&
-            end < reader.pageCount
-          )
-            void load(end + 1, 'next');
-        }}
-        onTouchMove={() => {
-          scrollIntent.current = true;
-        }}
-        onKeyDown={(event) => {
-          if (
-            ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
-          )
-            scrollIntent.current = true;
-        }}
-        onPointerDown={(event) => {
-          if (event.target === event.currentTarget) scrollIntent.current = true;
-        }}
-        style={{
-          '--reading-size': `${preferences.size}px`,
-          '--reading-line': preferences.lineHeight,
-          '--reading-margin': `${preferences.margin}px`,
-          '--reading-font':
-            preferences.font === 'sans' ? 'var(--font-body)' : 'var(--font-display)',
-        }}
-      >
-        {start > 1 && (
-          <button
-            class="secondary-button flow-edge"
-            disabled={loading}
-            onClick={() => void load(start - 1, 'previous')}
-          >
-            Carica pagina precedente · {start - 1}
-          </button>
-        )}
-        {pages.map((page) => (
-          <section
-            class="flow-sheet"
-            key={page.page}
-            data-flow-page={page.page}
-            aria-label={`Pagina ${page.page}`}
-          >
-            <p class="page-marker" data-flow-block="marker">
-              Pagina {page.page}
-            </p>
-            {!page.supported && (
-              <div class="engine-warning" data-testid="flow-warning">
-                <strong>Questa pagina richiede il confronto con l’Originale</strong>
-                <ul>
-                  {page.warnings.map((w) => (
-                    <li key={w}>{w}</li>
-                  ))}
-                </ul>
-                <p>Il testo seguente è diagnostico, non una ricostruzione affidabile.</p>
-                <button class="secondary-button" onClick={() => showOriginal(page.page)}>
-                  Originale pagina {page.page}
-                </button>
-              </div>
-            )}
-            <div class="flow-prose">
-              {page.blocks.map((block) => (
-                <div key={block.id} data-flow-block={block.id}>
-                  {block.kind === 'figure' ? (
-                    <FlowFigure reader={reader} figure={block} />
-                  ) : (
-                    <ReadingText block={block} />
-                  )}
-                </div>
-              ))}
-              {!page.text && <p>Nessun testo estraibile. Non viene eseguito OCR.</p>}
+      <div class="annotated-layout">
+        <div class="annotated-main">
+          {!original && <AnnotationSelection />}
+          {original && (
+            <div class="flow-original-view">
+              <PageOriginal key={current} reader={reader} number={current} />
             </div>
-          </section>
-        ))}
-        {pages.length > 0 &&
-          (end < reader.pageCount ? (
-            <button
-              class="secondary-button flow-edge"
-              data-testid="flow-continue"
-              disabled={loading}
-              onClick={() => void load(end + 1, 'next')}
-            >
-              Continua con pagina {end + 1}
-            </button>
-          ) : (
-            <p class="page-marker">Fine del documento</p>
-          ))}
+          )}
+          <div
+            ref={root}
+            class="flow-viewport"
+            data-testid="flow-viewport"
+            hidden={original}
+            tabIndex={0}
+            role="region"
+            aria-label="Testo a scorrimento continuo"
+            onScroll={scroll}
+            onWheel={(event) => {
+              scrollIntent.current = true;
+              if (event.deltaY < 0 && event.currentTarget.scrollTop < 60 && start > 1)
+                void load(start - 1, 'previous');
+              else if (
+                event.deltaY > 0 &&
+                event.currentTarget.scrollHeight -
+                  event.currentTarget.clientHeight -
+                  event.currentTarget.scrollTop <
+                  160 &&
+                end < reader.pageCount
+              )
+                void load(end + 1, 'next');
+            }}
+            onTouchMove={() => {
+              scrollIntent.current = true;
+            }}
+            onKeyDown={(event) => {
+              if (
+                ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(
+                  event.key,
+                )
+              )
+                scrollIntent.current = true;
+            }}
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) scrollIntent.current = true;
+            }}
+            style={{
+              '--reading-size': `${preferences.size}px`,
+              '--reading-line': preferences.lineHeight,
+              '--reading-margin': `${preferences.margin}px`,
+              '--reading-font':
+                preferences.font === 'sans' ? 'var(--font-body)' : 'var(--font-display)',
+            }}
+          >
+            {start > 1 && (
+              <button
+                class="secondary-button flow-edge"
+                disabled={loading}
+                onClick={() => void load(start - 1, 'previous')}
+              >
+                Carica pagina precedente · {start - 1}
+              </button>
+            )}
+            {pages.map((page) => (
+              <section
+                class="flow-sheet"
+                key={page.page}
+                data-flow-page={page.page}
+                aria-label={`Pagina ${page.page}`}
+              >
+                <p class="page-marker" data-flow-block="marker">
+                  Pagina {page.page}
+                </p>
+                {!page.supported && (
+                  <div class="engine-warning" data-testid="flow-warning">
+                    <strong>Questa pagina richiede il confronto con l’Originale</strong>
+                    <ul>
+                      {page.warnings.map((w) => (
+                        <li key={w}>{w}</li>
+                      ))}
+                    </ul>
+                    <p>Il testo seguente è diagnostico, non una ricostruzione affidabile.</p>
+                    <button class="secondary-button" onClick={() => showOriginal(page.page)}>
+                      Originale pagina {page.page}
+                    </button>
+                  </div>
+                )}
+                <div class="flow-prose">
+                  {page.blocks.map((block) => (
+                    <div key={block.id} data-flow-block={block.id}>
+                      {block.kind === 'figure' ? (
+                        <FlowFigure reader={reader} figure={block} />
+                      ) : (
+                        <AnnotatedText block={block} highlights={highlights.get(page.page) ?? []} />
+                      )}
+                    </div>
+                  ))}
+                  {!page.text && <p>Nessun testo estraibile. Non viene eseguito OCR.</p>}
+                </div>
+              </section>
+            ))}
+            {pages.length > 0 &&
+              (end < reader.pageCount ? (
+                <button
+                  class="secondary-button flow-edge"
+                  data-testid="flow-continue"
+                  disabled={loading}
+                  onClick={() => void load(end + 1, 'next')}
+                >
+                  Continua con pagina {end + 1}
+                </button>
+              ) : (
+                <p class="page-marker">Fine del documento</p>
+              ))}
+          </div>
+        </div>
+        <AnnotationPanel />
       </div>
       <p class="small-note flow-footnote">
         La lettura carica pagine su scorrimento o richiesta, non l’intero testo. Ricostruzione
-        euristica; la posizione non viene ancora salvata nel file.
+        euristica; annotazioni e punto di lettura vanno conservati nel JSON separato.
       </p>
     </section>
   );
