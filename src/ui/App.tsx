@@ -1,50 +1,47 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import { FileWorkbench } from './FileWorkbench';
-
-type Theme = 'light' | 'dark';
-
-function initialTheme(): Theme {
-  if (typeof window === 'undefined' || !window.matchMedia) return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
+import { PreferencesContext, usePreferencesController } from './preferences';
 
 export function App() {
-  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const settings = usePreferencesController();
+  const theme = settings.preferences.theme;
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
   return (
-    <div class="app-shell">
-      <header class="app-header">
-        <p class="wordmark">
-          Fluido <span class="wordmark-sub">· lettore PDF</span>
-        </p>
-        <button
-          type="button"
-          class="theme-toggle"
-          aria-label={theme === 'dark' ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
-      </header>
+    <PreferencesContext.Provider value={settings}>
+      <div class="app-shell">
+        <header class="app-header">
+          <p class="wordmark">
+            Fluido <span class="wordmark-sub">· lettore PDF</span>
+          </p>
+          <button
+            type="button"
+            class="theme-toggle"
+            aria-label={theme === 'dark' ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
+            onClick={() => settings.update({ theme: theme === 'dark' ? 'light' : 'dark' })}
+          >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+        </header>
 
-      <main class="app-main">
-        <FileWorkbench />
-      </main>
+        <main class="app-main">
+          <FileWorkbench />
+        </main>
 
-      <footer class="app-footer">
-        <p>
-          Fluido v0.1.0-engine.3 · Fase 2 · <a href="https://opensource.org/licenses/MIT">MIT</a>
-          {' · '}
-          <a href="./pdfjs/LICENSE" download="PDF.js-LICENSE.txt">
-            Licenza PDF.js
-          </a>
-        </p>
-      </footer>
-    </div>
+        <footer class="app-footer">
+          <p>
+            Fluido v0.2.0-reader.1 · Fase 3 · <a href="https://opensource.org/licenses/MIT">MIT</a>
+            {' · '}
+            <a href="./pdfjs/LICENSE" download="PDF.js-LICENSE.txt">
+              Licenza PDF.js
+            </a>
+          </p>
+        </footer>
+      </div>
+    </PreferencesContext.Provider>
   );
 }
 

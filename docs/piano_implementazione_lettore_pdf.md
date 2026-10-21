@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **Fasi 0, 1 e 2 autorizzate; gate dispositivi reali aperto** · Data: 19/10/2026
+Stato: **Fasi 0–3 autorizzate; gate dispositivi reali aperto** · Aggiornamento: 21/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -12,7 +12,7 @@ Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MI
 | Build            | Vite + `vite-plugin-pwa` (Workbox)                            | Output statico, service worker e manifest generati           |
 | UI               | Preact + CSS                                                  | Bundle leggero; scelta definitiva, nessun framework pesante  |
 | PDF              | `pdfjs-dist` (Apache-2.0), worker separato                    | Rendering pagine, estrazione testo e immagini                |
-| Stato locale     | IndexedDB (`idb`)                                             | Cache delle annotazioni e preferenze globali                 |
+| Stato locale     | IndexedDB (API native, nessuna libreria aggiuntiva)           | Cache locale e preferenze globali indipendenti               |
 | Validazione file | JSON Schema + `ajv` (o `zod`)                                 | Import sicuro del file associato                             |
 | Test             | Vitest (unità), Playwright (E2E su Chromium, WebKit, Firefox) | Copertura dei criteri di accettazione                        |
 | CI/CD            | GitHub Actions → Azure Static Web Apps (Free)                 | Deploy automatico, ambienti di anteprima per le PR           |
@@ -131,6 +131,13 @@ e 2 skip intenzionali OPFS fuori da Chromium.
 - **Uscita**: modello documento testato sul corpus semplice.
 
 ### Fase 3 – Vista di lettura (≈ 2 settimane)
+
+Implementazione `0.2.0-reader.1`: [ADR-004](ADR-004-lettura-fluida.md) e
+[QA Fase 3](qa-fase3.md). Finestra progressiva di cinque pagine, non scrollbar
+virtuale dell'intero PDF; preferenze globali in un database nuovo senza migrare
+i dati esistenti. Posizione conservata in memoria durante la lettura e il
+confronto Originale, non ancora salvata nel file. Le durate restano stime per
+sviluppo umano, non tempi di esecuzione automatica.
 
 - Scorrimento continuo con marcatori di pagina e navigazione per pagina.
 - Rendering progressivo/virtualizzato per documenti lunghi.

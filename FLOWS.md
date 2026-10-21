@@ -1,10 +1,37 @@
 # Main flows
 
+## Esito Fase 3 (21/10/2026)
+
+Build di produzione verificata da installazione pulita: 66 test unitari superati,
+79 test browser superati e 2 esclusioni OPFS previste. Ripetizione del percorso
+scorrimento/reflow/Originale: 12/12. Verifica visiva desktop/tablet/mobile e altezza
+ridotta, temi, box/citazioni, Originale, figure/zoom, errore e riprova; nessun
+nuovo pageerror. Dettagli e limiti in `docs/qa-fase3.md`.
+
+## Fase 3: delta e controlli prima della pubblicazione
+
+- Vista principale “Lettura fluida”, vista tecnica ancora accessibile. Apertura:
+  una sola pagina estratta; caricamento su scorrimento volontario o “Continua”.
+- Finestra di massimo 5 pagine renderizzate, navigazione diretta, ritorno alle
+  pagine precedenti senza salto del contenuto visibile.
+- Preferenze: carattere, dimensione, interlinea, margini e chiaro/scuro/seppia;
+  persistono in un nuovo database IndexedDB indipendente dal JSON e dai documenti.
+- Originale sincronizzato alla pagina visibile; ritorno al medesimo punto della
+  finestra. Modifica tipografia conserva un ancoraggio visivo approssimativo.
+- Figure nel flusso, rendering su visibilità, zoom con controlli, doppio tocco e
+  pinch; chiusura con Escape e ritorno alla lettura. Verificare raster e vettori.
+- Corpus: 200 pagine senza estrazione preventiva, box/citazioni, scansione,
+  colonne, errori/riprova, cambio documento durante richiesta pendente.
+- Desktop 1280, tablet 768 e mobile 375; tutti i temi, tastiera, offline, storage
+  non disponibile. Nessuna migrazione del vecchio database o del JSON.
+- Posizione soltanto in memoria durante la sessione: persistenza automatica del
+  punto di lettura e annotazioni non fanno parte di questa fase.
+
 ## Apertura e tema
 
 - Start: Azure o anteprima locale, schermata “Il tuo PDF, i tuoi file”.
 - Steps: alternare tema, aprire un PDF con selettore standard o nativo.
-- Expect: tema senza reload, nome/hash PDF, pannello “Testo ricostruito”; originale immutato.
+- Expect: tema senza reload, nome/hash PDF, “Lettura fluida” e accesso a “Vista tecnica”; originale immutato.
 
 ## Lettura e figure
 
@@ -42,7 +69,7 @@
 ## Aggiornamento e pubblicazione
 
 - Steps: aggiornare PWA con dati pendenti, poi dopo download; aprire link live in contesto vuoto.
-- Expect: aggiornamento protetto; nuova versione 0.1.0-engine.3, stessi flussi su Azure.
+- Expect: aggiornamento protetto; nuova versione 0.2.0-reader.1, stessi flussi su Azure.
 - Preview: verificare link restituito separatamente; eventuali limiti iframe dichiarati.
 
 ## Verifica locale del 20/10/2026

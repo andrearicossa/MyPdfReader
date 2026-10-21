@@ -3,6 +3,7 @@ import { App } from './ui/App';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/app.css';
+import './styles/reader.css';
 import { registerPwa } from './pwa/register';
 
 render(<App />, document.getElementById('app')!);

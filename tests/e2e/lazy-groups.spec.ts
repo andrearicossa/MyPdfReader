@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
       send.call(this, message, Array.isArray(options) ? { transfer: options } : options);
     };
   });
-  await page.goto('/');
+  await page.goto('/?view=technical');
 });
 const extracted = (page: Page) =>
   page.evaluate(() => (window as unknown as { textPages: number[] }).textPages);

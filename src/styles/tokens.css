@@ -39,6 +39,21 @@
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.4);
 }
 
+[data-theme='sepia'] {
+  --color-bg: #eee2c9;
+  --color-surface: #f6ecd6;
+  --color-surface-offset: #e9dcc0;
+  --color-border: #c8b897;
+  --color-divider: #d8c9aa;
+  --color-text: #3f3325;
+  --color-text-muted: #716047;
+  --color-text-faint: #9a886c;
+  --color-text-inverse: #f9f8f4;
+  --color-primary: #66502f;
+  --color-primary-hover: #46351e;
+  --color-primary-highlight: #ddc79e;
+}
+
 /* Sistema di scala tipografica e spaziatura (base 4px). */
 :root {
   --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);

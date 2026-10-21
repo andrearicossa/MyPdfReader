@@ -1,0 +1,271 @@
+.reader-workspace {
+  margin-block: var(--space-8);
+}
+.reader-modes,
+.flow-toolbar,
+.zoom-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.reader-modes {
+  margin-bottom: var(--space-4);
+}
+.reader-modes [aria-pressed='true'],
+.flow-toolbar [aria-pressed='true'] {
+  background: var(--color-primary-highlight);
+  border-color: var(--color-primary);
+}
+.fluid-reader {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.flow-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-5);
+}
+.flow-heading .eyebrow {
+  margin-bottom: var(--space-2);
+}
+.flow-heading h2 {
+  margin: 0;
+}
+.flow-toolbar {
+  padding: var(--space-4) var(--space-5);
+  border-block: 1px solid var(--color-divider);
+}
+.workbench .flow-toolbar input[type='number'] {
+  width: 4.5rem;
+  margin: 0;
+  padding: var(--space-2);
+}
+.reading-settings {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+}
+.reading-settings summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  padding-block: var(--space-2);
+}
+.reading-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-5);
+  padding-block: var(--space-4);
+}
+.reading-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  min-width: 0;
+}
+.reading-controls select {
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  min-height: 44px;
+  max-width: 100%;
+}
+.reading-controls input {
+  width: 100%;
+  accent-color: var(--color-primary);
+  min-height: 32px;
+}
+.fluid-reader > [role='status'],
+.flow-footnote {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-xs);
+}
+.fluid-reader > .error-notice {
+  margin: var(--space-3);
+}
+.fluid-reader button.text-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+.flow-viewport {
+  height: clamp(20rem, 70dvh, 54rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  border-block: 1px solid var(--color-divider);
+}
+.flow-viewport[hidden] {
+  display: none;
+}
+.flow-sheet {
+  max-width: 58rem;
+  margin-inline: auto;
+  padding: var(--space-4) var(--reading-margin);
+  min-height: 14rem;
+  overflow-wrap: anywhere;
+}
+.flow-prose {
+  font-family: var(--reading-font);
+  font-size: var(--reading-size);
+  line-height: var(--reading-line);
+  max-width: calc(68ch - var(--reading-margin) * 2);
+  margin-inline: auto;
+}
+.flow-prose [data-flow-block] + [data-flow-block] {
+  margin-top: 1em;
+}
+.flow-prose h3 {
+  font-family: inherit;
+  font-size: 1.2em;
+  line-height: 1.3;
+  margin-block: 1em 0.5em;
+}
+.flow-prose .engine-box {
+  padding: var(--space-4);
+  margin-block: 1em;
+}
+.flow-prose .engine-quote {
+  margin: 1em 0 1em var(--space-3);
+  padding-left: var(--space-4);
+}
+.flow-prose .engine-quote footer {
+  font-size: 0.85em;
+}
+.page-marker {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--color-divider);
+  padding-block: var(--space-4);
+}
+.flow-edge {
+  display: block;
+  margin: var(--space-4) auto;
+  max-width: calc(100% - 2rem);
+}
+.flow-figure {
+  margin-block: var(--space-5);
+  min-height: 10rem;
+  font-family: var(--font-body);
+}
+.flow-figure figcaption {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+.flow-figure canvas {
+  max-width: 100%;
+  height: auto;
+  max-height: 32rem;
+  object-fit: contain;
+  margin-inline: auto;
+}
+.flow-figure-frame {
+  display: grid;
+  place-items: center;
+  max-height: 32rem;
+  overflow: hidden;
+}
+.flow-figure-frame canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.flow-figure canvas[hidden],
+.figure-dialog canvas[hidden] {
+  display: none;
+}
+.flow-figure-frame [role='status'] {
+  font-size: var(--text-sm);
+}
+.flow-figure button {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.flow-original-view {
+  height: clamp(20rem, 70dvh, 54rem);
+  overflow: auto;
+  padding: var(--space-4);
+}
+.flow-original-view .engine-figure {
+  margin: 0 auto;
+  max-width: 48rem;
+}
+.figure-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(96vw, 76rem);
+  max-height: 95dvh;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  overflow: auto;
+}
+.figure-dialog::backdrop {
+  background: rgb(0 0 0 /0.65);
+}
+.figure-dialog h2 {
+  font-size: var(--text-lg);
+  margin: 0;
+}
+.figure-dialog .small-note {
+  font-size: var(--text-sm);
+  margin-block: var(--space-3);
+}
+.zoom-stage {
+  height: 60dvh;
+  min-height: 12rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  touch-action: none;
+  background: var(--color-surface-offset);
+  cursor: grab;
+}
+.zoom-stage canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+}
+@media (max-width: 40rem) {
+  .flow-heading,
+  .flow-toolbar {
+    padding: var(--space-3);
+  }
+  .flow-toolbar .text-link {
+    width: 100%;
+    font-size: var(--text-sm);
+  }
+  .flow-toolbar button {
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+    min-height: 44px;
+  }
+  .reading-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .flow-heading h2 {
+    font-size: var(--text-lg);
+  }
+  .figure-dialog {
+    padding: var(--space-3);
+  }
+}

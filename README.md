@@ -1,18 +1,22 @@
 # Fluido — Lettore PDF in modalità fluida
 
 Lettore PDF leggero e open source: il testo del documento si legge come un ebook, con font
-regolabile, evidenziazioni e note. Il PDF originale non viene mai modificato: annotazioni e
-posizione di lettura vivono in un file JSON separato, portabile su altri dispositivi.
+regolabile. Il PDF originale non viene mai modificato. Il progetto prevede evidenziazioni,
+note e posizione di lettura in un file JSON separato, portabile su altri dispositivi;
+queste funzioni non sono ancora disponibili nella vista fluida.
 
-**Stato: Fase 2 (motore PDF e anteprima diagnostica, non ancora lettore completo).**
+**Stato: Fase 3 (lettura fluida, non ancora annotazioni e segnalibro persistente).**
 La PWA estrae nel worker PDF.js solo la pagina selezionata, senza elaborare le altre
 in anticipo. Mantiene una cache LRU di 8 pagine visitate e ricostruisce paragrafi,
 titoli, box rettangolari semplici e citazioni rientrate con attribuzione esplicita.
 Il testo nei gruppi resta selezionabile; le immagini vere restano ritagli su richiesta.
 Il file PDF viene comunque letto interamente per caricamento e hash, non a intervalli.
 Include confronto con
-l'Originale e avvisi per layout non supportati. Lettura continua, preferenze,
-annotazioni vere e posizione di lettura persistente sono ancora da implementare.
+l'Originale e avvisi per layout non supportati. La vista principale ha scorrimento
+progressivo, finestra di cinque pagine, tipografia regolabile e figure con zoom.
+Le preferenze globali sono in un database IndexedDB separato; in caso di errore
+restano temporanee con avviso. Annotazioni vere e posizione di lettura persistente
+sono ancora da implementare.
 La nota e la pagina del pannello di persistenza rimangono dati di prova della Fase 1.
 Il formato dati `fluido/file-spike v1` è sperimentale, non il formato definitivo MVP.
 
@@ -28,6 +32,9 @@ Per il motore: [ADR-002](docs/ADR-002-motore-pdf.md),
 [QA Fase 2](docs/qa-fase2.md). Il riconoscimento dei gruppi è euristico, non una
 garanzia su qualsiasi PDF; il documento dello screenshot dell'utente non è disponibile
 come PDF ed è ancora da verificare. Nessun OCR o supporto a layout complessi.
+Per la vista fluida: [ADR-004](docs/ADR-004-lettura-fluida.md) e
+[QA Fase 3](docs/qa-fase3.md). Il sito Azure è il riferimento funzionale;
+l'anteprima incorporata può impedire l'avvio del worker PDF.
 
 ## Requisiti
 

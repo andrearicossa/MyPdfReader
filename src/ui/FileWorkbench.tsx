@@ -11,7 +11,7 @@ import {
   type LocalHandle,
 } from '../storage/files';
 import { workCache } from '../storage/cache';
-import { EnginePanel } from './EnginePanel';
+import { ReaderWorkspace } from './ReaderWorkspace';
 import type { DocumentReader } from '../pdf/document-reader';
 
 export function FileWorkbench() {
@@ -132,12 +132,13 @@ export function FileWorkbench() {
   return (
     <section class="workbench" aria-labelledby="workbench-title">
       <div class="workbench-intro">
-        <p class="eyebrow">FASE 2 · ESTRAZIONE E RICOSTRUZIONE</p>
+        <p class="eyebrow">FASE 3 · LETTURA FLUIDA</p>
         <h1 id="workbench-title">Il tuo PDF, i tuoi file</h1>
         <p class="intro-copy">
-          Apri un PDF e prova a conservare una nota e una pagina in un JSON separato. Questa è una
-          verifica tecnica: ora puoi controllare il testo ricostruito e le figure. La vista di
-          lettura completa ed evidenziazioni arriveranno nelle prossime fasi.
+          Apri un PDF locale e leggilo con testo adattabile, figure e confronto con l’originale. Le
+          preferenze restano su questo dispositivo. Il JSON separato è ancora una verifica tecnica
+          di nota e pagina: evidenziazioni e salvataggio del punto di lettura arriveranno nelle
+          prossime fasi.
         </p>
       </div>
 
@@ -230,7 +231,7 @@ export function FileWorkbench() {
           {error}
         </p>
       )}
-      {reader && <EnginePanel key={pdfUrl} reader={reader} originalUrl={pdfUrl} />}
+      {reader && <ReaderWorkspace key={pdfUrl} reader={reader} originalUrl={pdfUrl} />}
       {state ? (
         <div class="workspace-grid">
           <div class="document-panel">

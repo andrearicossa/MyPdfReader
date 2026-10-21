@@ -64,8 +64,8 @@ export function EnginePanel({
       </div>
       <p class="small-note">
         Elaboriamo soltanto la pagina selezionata, senza precaricare le altre. La ricostruzione di
-        testo, box e citazioni è euristica: confrontala con l’originale. Lettura continua,
-        preferenze e annotazioni arriveranno nelle prossime fasi.
+        testo, box e citazioni è euristica: confrontala con l’originale. Usa “Lettura fluida” per lo
+        scorrimento e le preferenze; le annotazioni arriveranno nelle prossime fasi.
       </p>
       <form
         class="engine-toolbar"
@@ -212,7 +212,7 @@ export function EnginePanel({
   );
 }
 
-function ReadingText({ block }: { block: TextBlock }) {
+export function ReadingText({ block }: { block: TextBlock }) {
   if (block.kind === 'box')
     return (
       <aside
@@ -255,7 +255,7 @@ function ReadingText({ block }: { block: TextBlock }) {
   );
 }
 
-function PageOriginal({ reader, number }: { reader: DocumentReader; number: number }) {
+export function PageOriginal({ reader, number }: { reader: DocumentReader; number: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);

@@ -10,7 +10,7 @@ import {
 } from '../fixtures/pdf-corpus.mjs';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?view=technical');
 });
 const upload = (buffer: Buffer, name = 'corpus.pdf') => ({
   name,

@@ -8,6 +8,9 @@ UTF-16 nel medesimo testo della pagina, senza ripetere il testo dei figli.
 Il filtro dei margini ricorrenti confronta soltanto le pagine attualmente in cache:
 non rappresenta un'analisi preventiva dell'intero documento.
 L'adattatore PDF.js è in `src/pdf`, fuori dal dominio puro.
+`reading-preferences.ts` valida le preferenze e limita la finestra fluida a cinque
+pagine, senza dipendenze dal browser. La persistenza delle preferenze è un
+adattatore nuovo in `src/storage/preferences.ts`.
 Nella Fase 1 `file-spike.ts` definisce esclusivamente il formato sperimentale
 della prova e la sua validazione, non lo schema definitivo delle annotazioni.
 
