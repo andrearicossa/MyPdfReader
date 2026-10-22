@@ -1,5 +1,17 @@
 # Main flows
 
+## Esito Fase 5
+
+- Release `0.4.0-persistence.1`, codice `19a60d8`.
+- 108 test unitari, 120 browser superati e sei esclusioni previste sia nella
+  regressione locale sia sulla release Azure; 29 prove mirate superate.
+- UI 01 approvata per la Fase 6, non integrata in questa release.
+- Selezione e nota reali, download, Originale e apertura del PDF verificati
+  anche nel browser persistente su Azure; nessun nuovo pageerror.
+- Dettagli e screenshot: `docs/qa-fase5.md`, `evidence/phase5/`.
+- Anteprima incorporata: worker bloccato dall'origine opaca; usare Azure.
+- I gate su PDF dell'utente, picker OS e dispositivi fisici restano aperti.
+
 ## Fase 5: inventario prima delle modifiche
 
 - Baseline Azure aperta il 22/10/2026: `0.3.0-annotations.1`, Fase 4.

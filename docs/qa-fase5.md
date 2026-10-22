@@ -62,8 +62,34 @@ recupero dovranno essere mantenuti nell'integrazione del layout UI 01.
   preesistenti.
 - Ripetizione mirata dopo le rifiniture di stato: 29 test superati e quattro
   esclusioni previste, su file, adattatore nativo e persistenza nei tre motori.
-- Pubblicazione, controllo CI e ripetizione su Azure in corso; i riferimenti
-  verranno registrati dopo la conclusione delle esecuzioni.
+- Release su Azure: 120 test superati, sei esclusioni previste, zero casi
+  inattesi e zero flaky, su tutti i 126 scenari e i tre motori.
+- Campioni temporali su Azure dalla fine dell'input al riscontro della cache:
+  Chromium 688 ms, Firefox 834 ms, WebKit 757 ms. Sono tre campioni di una sola
+  esecuzione con polling, non un benchmark o una garanzia su dispositivi reali.
+
+Il codice applicativo della release è il commit `19a60d8f5b0ad33eb0a60038739774051fabda59`.
+La [CI](https://github.com/andrearicossa/MyPdfReader/actions/runs/39857984315)
+e il [deploy Azure](https://github.com/andrearicossa/MyPdfReader/actions/runs/39857984275)
+si sono conclusi con successo. Questo aggiornamento del report modifica soltanto
+la documentazione, non il codice pubblicato.
+
+Il [sito Azure](https://proud-desert-027a07a10.1.azurestaticapps.net/) è stato aperto
+anche in un contesto browser pulito: footer `0.4.0-persistence.1`, box con testo
+vero selezionato con mouse, aggiunta e modifica di una nota, download del JSON v1
+con `updatedAt` e posizione. Funzionano il link che apre il PDF originale in una
+nuova scheda e la vista Originale con ritorno al flusso; nessun nuovo `pageerror`.
+
+L'artefatto del lettore è aggiornato mantenendo lo stesso ID; il prototipo di
+layout UI 01 rimane separato. Il collegamento pubblico dell'anteprima incontra
+Cloudflare nel browser QA; il proxy mostra il footer nuovo ma il worker viene
+bloccato dall'origine opaca `null`. Per usare il lettore il riferimento funzionale
+è Azure. Nessun worker finto o parser alternativo è stato introdotto.
+
+Piano, ADR e rapporto sono aggiornati nel repository GitHub. La copia nei File
+del Progetto non è stata sincronizzata: due tentativi di `sync` hanno restituito
+HTTP 403. I collegamenti ai documenti aggiornati puntano quindi al repository,
+non a una copia del Progetto dichiarata erroneamente aggiornata.
 
 ## Gate manuali che restano aperti
 
