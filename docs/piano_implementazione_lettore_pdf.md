@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **Fasi 0–4 autorizzate; gate dispositivi reali aperto** · Aggiornamento: 21/10/2026
+Stato: **Fasi 0–4 autorizzate; revisione UI inclusa nella Fase 6; gate dispositivi reali aperto** · Aggiornamento: 22/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -181,30 +181,88 @@ le prove temporali di sistema né il gate dei file esterni su dispositivi reali.
 - Gestione conflitti semplice: all'apertura confronto `updatedAt` cache/file e scelta esplicita dell'utente.
 - Validazione schema e migrazioni versione.
 
-### Fase 6 – Stabilizzazione e rilascio MVP (≈ 1 settimana)
+### Fase 6 – Revisione UI/UX, stabilizzazione e rilascio MVP
 
-- Esecuzione completa dei criteri di accettazione sul corpus.
-- Accessibilità di base (tastiera, contrasto, etichette).
-- Misure prestazionali informative (apertura, ricostruzione, memoria) per fissare le soglie future (D6).
-- Tag `v0.1.0`, note di rilascio, guida utente breve.
+Ampliamento approvato dall'utente il 22/10/2026: l'interfaccia dell'MVP non è
+considerata sufficientemente semplice da usare. La fase include quindi un layout
+diverso, centrato sulla lettura, senza sostituire i test finali già previsti.
+La Fase 5 resta invariata; questo aggiornamento non avvia il redesign né modifica
+l'app attualmente pubblicata.
 
-Stima totale indicativa: **10–13 settimane** a una persona part-time equivalente; da ricalibrare dopo la Fase 1.
+#### Proposta di layout e approvazione
+
+- **Flussi principali**: rivedere apertura del PDF, lettura, selezione/annotazione,
+  consultazione delle note, ripresa della lettura e conservazione del JSON.
+- **Proposta visiva**: preparare wireframe o mockup per desktop e mobile, con
+  adattamento al tablet e confronto con l'interfaccia attuale.
+- **Approvazione**: concordare con l'utente layout e comportamenti prima delle
+  modifiche al codice. I punti seguenti sono la direzione progettuale da validare,
+  non un design già approvato.
+
+#### Direzione della revisione UI
+
+- **Documento protagonista**: destinare quasi tutto lo spazio utile alla lettura,
+  riducendo introduzioni, pannelli permanenti e informazioni tecniche.
+- **Barra compatta**: nome del PDF, navigazione, impostazioni e accesso alle note;
+  controlli secondari raccolti senza sovraccaricare la vista.
+- **Azioni contestuali**: proporre evidenziazione e nota vicino al testo selezionato,
+  con alternative utilizzabili da tastiera e touch, non dipendenti dal solo hover.
+- **Annotazioni a scomparsa**: pannello laterale apribile su desktop e pannello
+  scorrevole su mobile, evitando che la lista allunghi continuamente la pagina.
+- **Salvataggio riconoscibile**: stato sintetico e discreto, con dettagli,
+  importazione ed esportazione in un menu dedicato. Avvisi di dati non esportati,
+  errori e conflitti non devono diventare meno visibili.
+- **Controlli tecnici separati**: mantenere la diagnostica fuori dal percorso
+  ordinario di lettura, senza confonderla con le funzioni del documento.
+
+#### Implementazione e verifica di usabilità
+
+- Implementare il layout approvato su desktop, tablet e telefono, preservando
+  selezione, ancore, posizione, Originale, figure e compatibilità del JSON.
+- Provare i flussi principali anche su viewport stretti e finestre basse:
+  apertura e chiusura dei pannelli, ritorno al testo, orientamento e ridimensionamento.
+- Verificare tastiera, focus, etichette, contrasto nei tre temi e controlli touch;
+  il nuovo layout non deve nascondere azioni essenziali o produrre sovrapposizioni.
+- Raccogliere il riscontro dell'utente sul nuovo layout prima di chiudere la fase.
+
+#### Stabilizzazione e rilascio, distinti dal redesign
+
+- Eseguire nuovamente l'intera suite di regressione e i criteri di accettazione
+  sul corpus dopo le modifiche UI, inclusi PDF invariato, note, ancore, posizione,
+  persistenza, import/export, gestione dei conflitti, offline e aggiornamenti PWA.
+- Mantenere i gate manuali su dispositivi reali e documenti dell'utente: il solo
+  collaudo dei mockup o l'emulazione del viewport non li sostituisce.
+- Misurare apertura, ricostruzione e memoria a scopo informativo, per fissare le
+  soglie future (D6), distinguendo eventuali regressioni introdotte dal layout.
+- Preparare tag e note di rilascio MVP, con numero di versione coerente con le
+  release già pubblicate, e aggiornare la guida utente.
+- **Uscita**: layout approvato dall'utente, flussi di lettura e annotazione
+  verificati, suite di regressione superata e gate di rilascio documentati.
+
+La precedente stima di circa una settimana copriva soltanto stabilizzazione e
+rilascio. La durata della Fase 6 e il totale vanno ricalibrati dopo l'approvazione
+della proposta UI: non si presume che il redesign rientri nella stessa settimana.
+La baseline originaria era di **10–13 settimane** a una persona part-time
+equivalente; le settimane si riferiscono allo sviluppo di un dev umano, non ai
+tempi di esecuzione automatica.
 
 ## 5. Tracciabilità verso i criteri di accettazione
 
-| Area dei criteri (analisi)                                      | Fase      | Verifica                                                      |
-| --------------------------------------------------------------- | --------- | ------------------------------------------------------------- |
-| Apertura file locale, PDF invariato                             | 1, 2      | E2E + confronto hash del PDF                                  |
-| Testo fluido, font regolabile                                   | 2, 3      | Unità su ricostruzione + E2E                                  |
-| Scorrimento continuo e riferimenti di pagina                    | 3         | E2E                                                           |
-| Figure e zoom                                                   | 2, 3      | E2E su corpus con figure                                      |
-| Evidenziazioni e note                                           | 4         | Unità ancoraggio + E2E                                        |
-| Ripristino del punto di lettura                                 | 4, 5      | E2E riapertura                                                |
-| File unico separato, portabilità                                | 5         | E2E: esporta → altro browser → importa → note al posto giusto |
-| Salvataggio automatico / ripiego con avviso                     | 1, 5      | E2E per piattaforma                                           |
-| Persistenza entro 2 s                                           | 5         | Test temporizzato                                             |
-| Codice e build disponibili, licenza MIT e dipendenze verificate | Fase 0, 6 | Checklist licenze (AC-32)                                     |
-| Desktop, tablet, telefono                                       | 3, 6      | Playwright viewport + prova manuale su dispositivi            |
+| Area dei criteri (analisi)                                      | Fase      | Verifica                                                       |
+| --------------------------------------------------------------- | --------- | -------------------------------------------------------------- |
+| Apertura file locale, PDF invariato                             | 1, 2      | E2E + confronto hash del PDF                                   |
+| Testo fluido, font regolabile                                   | 2, 3      | Unità su ricostruzione + E2E                                   |
+| Scorrimento continuo e riferimenti di pagina                    | 3         | E2E                                                            |
+| Figure e zoom                                                   | 2, 3      | E2E su corpus con figure                                       |
+| Evidenziazioni e note                                           | 4         | Unità ancoraggio + E2E                                         |
+| Ripristino del punto di lettura                                 | 4, 5      | E2E riapertura                                                 |
+| File unico separato, portabilità                                | 5         | E2E: esporta → altro browser → importa → note al posto giusto  |
+| Salvataggio automatico / ripiego con avviso                     | 1, 5      | E2E per piattaforma                                            |
+| Persistenza entro 2 s                                           | 5         | Test temporizzato                                              |
+| Codice e build disponibili, licenza MIT e dipendenze verificate | Fase 0, 6 | Checklist licenze (AC-32)                                      |
+| Desktop, tablet, telefono                                       | 3, 6      | Playwright viewport + prova manuale su dispositivi             |
+| Revisione UI/UX e layout centrato sulla lettura                 | 6         | Proposta desktop/mobile approvata + verifica dei flussi utente |
+| Regressioni dopo il cambio di layout                            | 6         | Suite completa + criteri di accettazione e gate manuali        |
 
 Ogni test riporta nel nome l'identificativo del criterio dell'analisi, da AC-01 a AC-32.
 
@@ -235,5 +293,7 @@ L'utente ha autorizzato progressivamente le Fasi 0, 1, 2, 3 e 4 nella conversazi
 I gate su documenti e dispositivi reali restano aperti anche dopo i test automatici.
 
 - [x] Fasi 0–4 autorizzate.
+- [x] Revisione UI/UX e nuovo layout inclusi nella Fase 6.
 - [ ] Fase 5: avvio e finalizzazione della persistenza.
+- [ ] Proposta UI desktop/mobile approvata prima dell'implementazione della Fase 6.
 - [ ] Gate dispositivi reali e corpus dell'utente completato.
