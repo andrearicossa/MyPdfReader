@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **Fasi 0–4 autorizzate; revisione UI inclusa nella Fase 6; gate dispositivi reali aperto** · Aggiornamento: 22/10/2026
+Stato: **Fase 5 implementata; layout desktop/mobile UI 01 approvato per l'integrazione nella Fase 6; gate dispositivi reali aperto** · Aggiornamento: 22/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -82,8 +82,9 @@ non il file sperimentale della Fase 1:
 - La posizione può avere `anchor` con citazione e contesto oppure `figure` e
   `fraction` relativi alla figura. Non usa pixel. `draftNote` è uno slot interno
   vuoto dell'adattatore, non una nota globale distinta.
-- `revision` gestisce le scritture della copia di lavoro; la strategia definitiva
-  di migrazione e recupero dei conflitti rimane una verifica della Fase 5.
+- `revision` descrive la copia di lavoro; recupero esplicito e compatibilità
+  sono definiti dalla Fase 5 in [ADR-006](ADR-006-persistenza.md). `updatedAt`
+  alla radice è opzionale e informativo, non un criterio automatico di vittoria.
 
 ## 4. Fasi e attività
 
@@ -170,24 +171,31 @@ Le stime in settimane si riferiscono allo sviluppo umano.
 
 ### Fase 5 – Persistenza (≈ 1–2 settimane)
 
-Da finalizzare. La Fase 4 riutilizza già cache, scrittura diretta, ripiego,
-controllo del PDF e blocco dei conflitti dell'adattatore della Fase 1, con debounce
-700 ms. Questo non chiude la strategia definitiva di migrazione o recupero,
-le prove temporali di sistema né il gate dei file esterni su dispositivi reali.
+Implementazione `0.4.0-persistence.1`: [ADR-006](ADR-006-persistenza.md) e
+[QA Fase 5](qa-fase5.md). La cache ha una coda indipendente dal filesystem,
+con avvio della persistenza dopo 700 ms dall'ultima modifica. I test temporali
+non costituiscono una garanzia real-time a pagina sospesa o sistema bloccato.
+Resta aperto il gate dei selettori e file esterni su dispositivi reali.
 
-- Cache in IndexedDB sempre aggiornata (debounce ≤ 2 s dall'ultima modifica).
+- Cache in IndexedDB con debounce 700 ms; non attende uno stream esterno lento.
 - Adattatore File System Access: scrittura automatica nel file associato.
 - Adattatore di ripiego: indicatore "modifiche non esportate", download del file, import con verifica fingerprint.
-- Gestione conflitti semplice: all'apertura confronto `updatedAt` cache/file e scelta esplicita dell'utente.
-- Validazione schema e migrazioni versione.
+- Conflitti cache/file e tra schede: scelta esplicita locale/esterna, copie
+  scaricabili, nuova conferma se la sorgente cambia ancora. Rilevamento dal
+  contenuto e dal token atomico della cache, non dal solo orologio; `updatedAt`
+  facoltativo a scopo informativo, compatibile con i JSON v1 della Fase 4.
+- Schema v1 e normalizzazione invariati. Nessuna migrazione necessaria per
+  `updatedAt` opzionale; versioni future, prototipo UI e file-spike rifiutati,
+  senza conversione distruttiva né azzeramento della cache.
 
 ### Fase 6 – Revisione UI/UX, stabilizzazione e rilascio MVP
 
 Ampliamento approvato dall'utente il 22/10/2026: l'interfaccia dell'MVP non è
 considerata sufficientemente semplice da usare. La fase include quindi un layout
 diverso, centrato sulla lettura, senza sostituire i test finali già previsti.
-La Fase 5 resta invariata; questo aggiornamento non avvia il redesign né modifica
-l'app attualmente pubblicata.
+L'utente ha successivamente approvato la proposta UI 01 desktop e mobile e ne ha
+autorizzato l'integrazione nella Fase 6, chiedendo di procedere prima con la Fase 5.
+Il redesign non viene anticipato nella release della persistenza.
 
 #### Proposta di layout e approvazione
 
@@ -195,9 +203,11 @@ l'app attualmente pubblicata.
   consultazione delle note, ripresa della lettura e conservazione del JSON.
 - **Proposta visiva**: preparare wireframe o mockup per desktop e mobile, con
   adattamento al tablet e confronto con l'interfaccia attuale.
-- **Approvazione**: concordare con l'utente layout e comportamenti prima delle
-  modifiche al codice. I punti seguenti sono la direzione progettuale da validare,
-  non un design già approvato.
+- **Approvazione ottenuta**: UI 01 desktop/mobile confermata dall'utente il
+  22/10/2026. Lettura centrale, note laterali richiudibili su desktop, pannello
+  sovrapposto e comandi inferiori su mobile. Prototipo di riferimento:
+  https://www.perplexity.ai/computer/a/fluido-proposta-layout-fase-6-YdFOxszURHSxxzelDRbQNg.
+  Implementazione nella Fase 6, mantenendo regressioni e gate manuali distinti.
 
 #### Direzione della revisione UI
 
@@ -212,6 +222,9 @@ l'app attualmente pubblicata.
 - **Salvataggio riconoscibile**: stato sintetico e discreto, con dettagli,
   importazione ed esportazione in un menu dedicato. Avvisi di dati non esportati,
   errori e conflitti non devono diventare meno visibili.
+- **Recupero Fase 5**: mantenere nel nuovo layout i download di entrambe le copie,
+  le conferme separate per copia locale/esterna, il blocco degli schemi futuri e
+  la distinzione fra cache, download e scrittura esterna effettivamente conclusa.
 - **Controlli tecnici separati**: mantenere la diagnostica fuori dal percorso
   ordinario di lettura, senza confonderla con le funzioni del documento.
 
@@ -289,11 +302,13 @@ OCR, multi-colonna, Google Drive e OneDrive, sincronizzazione, app Tauri, prefer
 ## 9. Approvazione
 
 L'analisi tecnica è approvata: tutte le decisioni aperte (D1–D9) sono chiuse.
-L'utente ha autorizzato progressivamente le Fasi 0, 1, 2, 3 e 4 nella conversazione.
+L'utente ha autorizzato progressivamente le Fasi 0–5 e l'integrazione del layout
+approvato nella Fase 6.
 I gate su documenti e dispositivi reali restano aperti anche dopo i test automatici.
 
 - [x] Fasi 0–4 autorizzate.
 - [x] Revisione UI/UX e nuovo layout inclusi nella Fase 6.
-- [ ] Fase 5: avvio e finalizzazione della persistenza.
-- [ ] Proposta UI desktop/mobile approvata prima dell'implementazione della Fase 6.
+- [x] Fase 5: persistenza e recupero implementati; verifiche automatiche documentate
+      in [QA Fase 5](qa-fase5.md). Gate file esterni/dispositivi reali ancora aperto.
+- [x] Proposta UI desktop/mobile approvata prima dell'implementazione della Fase 6.
 - [ ] Gate dispositivi reali e corpus dell'utente completato.

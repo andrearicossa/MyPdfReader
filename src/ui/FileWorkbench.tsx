@@ -162,7 +162,7 @@ export function FileWorkbench() {
   return (
     <section class="workbench" aria-labelledby="workbench-title">
       <div class="workbench-intro">
-        <p class="eyebrow">FASE 4 · ANNOTAZIONI</p>
+        <p class="eyebrow">FASE 5 · PERSISTENZA</p>
         <h1 id="workbench-title">Il tuo PDF, i tuoi file</h1>
         <p class="intro-copy">
           Apri un PDF locale e leggilo con testo adattabile, figure e confronto con l’originale. Le

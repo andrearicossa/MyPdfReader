@@ -283,7 +283,6 @@ export function AnnotationPanel() {
             data-testid="download-annotations"
             onClick={() =>
               void run(async () => {
-                await a.session.flush();
                 const d = a.session.state.data;
                 downloadData(serializeAnnotations(d), sidecarName(d.document.fileName));
                 await a.session.exported(d.revision);
@@ -315,6 +314,86 @@ export function AnnotationPanel() {
             {error}
           </p>
         )}
+        {a.state.conflict && (
+          <section
+            class="delete-confirm"
+            aria-label="Risoluzione conflitto"
+            data-testid="persistence-conflict"
+          >
+            <h3>
+              {a.state.conflict.source === 'cache'
+                ? 'Due copie nel browser'
+                : 'Due versioni del JSON'}
+            </h3>
+            <p class="small-note">
+              Nessuna unione automatica. Conserva entrambe le copie prima di scegliere. Le date sono
+              informative, non decidono quale versione vince.
+            </p>
+            <p class="small-note">
+              Locale: revisione {a.data.revision} · {a.data.updatedAt ?? 'data non disponibile'}.{' '}
+              Esterna: revisione {a.state.conflict.externalRevision ?? '?'} ·{' '}
+              {a.state.conflict.externalUpdatedAt ?? 'data non disponibile'}.
+            </p>
+            {!a.state.conflict.canUseExternal && (
+              <p class="error-notice" role="alert">
+                La copia esterna non è valida o usa uno schema non supportato. Non sarà
+                sovrascritta: scarica la copia locale in un nuovo file.
+              </p>
+            )}
+            <div class="annotation-actions">
+              <button
+                class="secondary-button"
+                disabled={busy || a.session.conflictExport() === undefined}
+                data-testid="download-conflict-external"
+                onClick={() => {
+                  const text = a.session.conflictExport();
+                  if (text !== undefined)
+                    downloadData(text, `${sidecarName(a.data.document.fileName)}.external.json`);
+                }}
+              >
+                Scarica copia esterna rilevata
+              </button>
+              <button
+                class="secondary-button"
+                disabled={busy || !a.state.conflict.canUseExternal}
+                data-testid="resolve-conflict-external"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      'La copia esterna sostituirà annotazioni e posizione locali. Hai conservato la copia locale?',
+                    )
+                  )
+                    return;
+                  void run(async () => {
+                    await a.session.resolveConflict('external');
+                    a.imported();
+                  });
+                }}
+              >
+                Usa copia esterna
+              </button>
+              <button
+                class="secondary-button"
+                disabled={busy || !a.state.conflict.canUseExternal}
+                data-testid="resolve-conflict-local"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      'La copia locale sostituirà quella esterna indicata. Hai conservato entrambe le copie?',
+                    )
+                  )
+                    return;
+                  void run(async () => {
+                    await a.session.resolveConflict('local');
+                    a.imported();
+                  });
+                }}
+              >
+                Mantieni copia locale
+              </button>
+            </div>
+          </section>
+        )}
         <div
           class={`save-state state-${a.state.status}`}
           role="status"
@@ -323,6 +402,11 @@ export function AnnotationPanel() {
           <strong>{a.state.mode === 'automatic' ? 'File collegato' : 'Download manuale'}</strong>
           <p>{a.state.message}</p>
           <p class="cache-note">{a.state.cacheMessage}</p>
+          <p class="cache-note" data-testid="annotation-unsaved">
+            {a.state.unexported
+              ? 'Modifiche non esportate.'
+              : 'Nessuna nuova modifica da esportare; verifica il file conservato.'}
+          </p>
         </div>
         <p class="small-note">
           Cache e scrittura partono dopo 700 ms senza modifiche. La cache del browser non

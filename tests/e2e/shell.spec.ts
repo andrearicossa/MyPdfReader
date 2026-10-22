@@ -13,7 +13,7 @@ test('la schermata funziona offline dopo la prima visita', async ({ page, contex
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Il tuo PDF, i tuoi file' })).toBeVisible();
-  await expect(page.getByText('Fase 4', { exact: false }).last()).toBeVisible();
+  await expect(page.getByText('Fase 5', { exact: false }).last()).toBeVisible();
 });
 
 test('il cambio tema è immediato e non ricarica la pagina', async ({ page }) => {

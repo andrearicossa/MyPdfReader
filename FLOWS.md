@@ -1,5 +1,26 @@
 # Main flows
 
+## Fase 5: inventario prima delle modifiche
+
+- Baseline Azure aperta il 22/10/2026: `0.3.0-annotations.1`, Fase 4.
+- Layout UI 01 desktop/mobile approvato; integrazione nella Fase 6, non in questa release.
+- Preservare tutti i percorsi precedenti: apertura PDF, estrazione per pagina,
+  box/citazioni, figure/zoom, Originale, preferenze, selezione, CRUD e posizione.
+- Persistenza: cache e avvio autoscrittura dopo 700 ms dall'ultima modifica;
+  cache indipendente da stream lento; stato salvato solo dopo close riuscita.
+- Ripiego: import/download reale, hash PDF verificato, indicatore modifiche
+  non esportate, cache distinta dal file esterno, protezione aggiornamenti PWA.
+- Conflitti file: scelta locale/esterna esplicita con conferma; nessun merge,
+  nessun overwrite di schema futuro/invalido; cambiamenti durante la scelta rilevati.
+- Conflitti tra schede: CAS IndexedDB, seconda copia non sovrascrive la prima,
+  download locale disponibile e scelta esplicita prima di sostituire la cache.
+- Compatibilità JSON v1 della Fase 4 e cache esistente; nessuna cancellazione,
+  nessuna migrazione inventata da file-spike o dal prototipo; date solo informative.
+- Errori: quota/cache indisponibile, permesso revocato, file mancante/non valido,
+  close fallita, modifiche durante scrittura, riapertura senza permesso implicito.
+- UI nuova limitata a controlli di recupero/stato, desktop/375 px, tre temi,
+  finestra bassa e focus. Corpus sintetico e OPFS non chiudono gate hardware.
+
 ## Fase 4: verifica del 21/10/2026
 
 - Release applicativa `b06639e`, versione `0.3.0-annotations.1`, inviata a main.

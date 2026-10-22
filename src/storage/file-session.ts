@@ -1,5 +1,5 @@
 import { createSpike, parseSpike, serializeSpike, type SpikeData } from '../core/file-spike';
-import { workCache, type WorkCache, type WorkCopy } from './cache';
+import { CacheConflictError, workCache, type WorkCache, type WorkCopy } from './cache';
 import type { LocalHandle } from './files';
 
 export type SessionData = Pick<SpikeData, 'document' | 'revision' | 'draftNote' | 'position'>;
@@ -7,6 +7,7 @@ export type DataCodec<T> = {
   create(document: SpikeData['document']): T;
   parse(text: string, hash: string): T;
   serialize(data: T): string;
+  touch?(data: T): T;
 };
 const spikeCodec: DataCodec<SpikeData> = {
   create: createSpike,
@@ -23,6 +24,12 @@ export type FileState<T = SpikeData> = {
   canReconnect: boolean;
   unexported: boolean;
   cachePending: boolean;
+  conflict?: {
+    source: 'file' | 'cache';
+    externalRevision?: number;
+    externalUpdatedAt?: string;
+    canUseExternal: boolean;
+  };
 };
 
 export class FileSession<T extends SessionData = SpikeData> {
@@ -33,6 +40,12 @@ export class FileSession<T extends SessionData = SpikeData> {
   private baseline?: string;
   private timer?: ReturnType<typeof setTimeout>;
   private queue = Promise.resolve();
+  private cacheQueue = Promise.resolve();
+  private cacheToken: string | null = null;
+  private cacheDisabled = false;
+  private filePending = false;
+  private conflictText?: string;
+  private conflictCopy?: WorkCopy<T>;
   private listeners = new Set<(state: FileState<T>) => void>();
   private cache: WorkCache<T>;
   private codec: DataCodec<T>;
@@ -71,15 +84,23 @@ export class FileSession<T extends SessionData = SpikeData> {
     try {
       const cached = await this.cache.read(this.state.data.document.sha256);
       if (cached) {
-        this.state.data = this.codec.parse(
-          this.codec.serialize(cached.data),
-          this.state.data.document.sha256,
-        );
+        // Una cache futura/corrotta non viene mai riscritta come un documento vuoto.
+        try {
+          this.state.data = this.codec.parse(
+            this.codec.serialize(cached.data),
+            this.state.data.document.sha256,
+          );
+        } catch (error) {
+          this.cacheDisabled = true;
+          throw error;
+        }
+        this.cacheToken = cached.cacheToken ?? null;
         this.baseline = cached.baseline;
         this.rememberedHandle = cached.sidecarHandle;
         this.pdfHandle = pdfHandle ?? cached.pdfHandle;
         this.state.canReconnect = !!this.rememberedHandle;
         this.state.unexported = cached.unexported;
+        this.filePending = cached.filePending ?? cached.unexported;
         this.state.message =
           'Copia di lavoro recuperata dal browser. Non equivale al file esterno: ricollegalo o scarica il JSON.';
       }
@@ -87,6 +108,7 @@ export class FileSession<T extends SessionData = SpikeData> {
       // Anche l'apertura senza modifiche deve poter ricordare l'handle del PDF.
       if (!cached) await this.remember();
     } catch {
+      this.cacheDisabled = true;
       this.state.cacheMessage =
         'Cache locale non disponibile o non valida: scarica il JSON prima di chiudere.';
     }
@@ -100,12 +122,14 @@ export class FileSession<T extends SessionData = SpikeData> {
   change(update: (data: T) => T) {
     const next = update(this.state.data);
     if (next === this.state.data) return;
-    this.state.data = {
+    const revised = {
       ...next,
       revision: this.state.data.revision + 1,
     };
+    this.state.data = this.codec.touch?.(revised) ?? revised;
     this.state.unexported = true;
     this.state.cachePending = true;
+    this.filePending = true;
     // Un conflitto o errore blocca l'autoscrittura fino a un'azione esplicita.
     if (this.state.status !== 'conflict' && this.state.status !== 'error') {
       this.state.status = 'pending';
@@ -116,31 +140,94 @@ export class FileSession<T extends SessionData = SpikeData> {
     this.timer = setTimeout(() => void this.flush(), 700);
   }
 
-  private async remember(): Promise<void> {
-    const copy: WorkCopy<T> = {
-      data: this.state.data,
-      unexported: this.state.unexported,
-      baseline: this.baseline,
-      sidecarHandle: this.handle ?? this.rememberedHandle,
-      pdfHandle: this.pdfHandle,
-    };
-    const revision = copy.data.revision;
+  private remember(): Promise<void> {
+    this.cacheQueue = this.cacheQueue.then(async () => {
+      if (this.state.conflict?.source === 'cache') return;
+      const copy: WorkCopy<T> = {
+        data: this.state.data,
+        unexported: this.state.unexported,
+        baseline: this.baseline,
+        sidecarHandle: this.handle ?? this.rememberedHandle,
+        pdfHandle: this.pdfHandle,
+        cacheToken: crypto.randomUUID(),
+        filePending: this.filePending,
+      };
+      try {
+        if (this.cacheDisabled) throw new Error('Cache conservata senza modificarla.');
+        await this.cache.write(copy, this.cacheToken);
+        this.cacheToken = copy.cacheToken!;
+        if (this.state.data === copy.data) this.state.cachePending = false;
+        this.state.cacheMessage = 'Copia di lavoro salvata nel browser; non sostituisce il JSON.';
+      } catch (error) {
+        this.state.cacheMessage = 'Cache non salvata: conserva i dati scaricando il JSON.';
+        if (error instanceof CacheConflictError) {
+          this.state.status = 'conflict';
+          this.state.message =
+            'La copia di lavoro è cambiata in un’altra scheda. Scrittura bloccata: scegli quale copia conservare.';
+          this.conflictCopy = await this.cache
+            .read(this.state.data.document.sha256)
+            .catch(() => undefined);
+          this.state.conflict = this.conflictInfo('cache', this.conflictCopy?.data);
+        }
+      }
+      this.emit();
+    });
+    return this.cacheQueue;
+  }
+
+  private conflictInfo(
+    source: 'file' | 'cache',
+    value?: unknown,
+  ): NonNullable<FileState<T>['conflict']> {
     try {
-      await this.cache.write(copy);
-      if (this.state.data.revision === revision) this.state.cachePending = false;
-      this.state.cacheMessage = 'Copia di lavoro salvata nel browser; non sostituisce il JSON.';
+      const data = this.codec.parse(JSON.stringify(value), this.state.data.document.sha256);
+      const updatedAt = (data as T & { updatedAt?: string }).updatedAt;
+      return {
+        source,
+        externalRevision: data.revision,
+        externalUpdatedAt: updatedAt,
+        canUseExternal: true,
+      };
     } catch {
-      this.state.cacheMessage = 'Cache non salvata: conserva i dati scaricando il JSON.';
+      return { source, canUseExternal: false };
     }
+  }
+
+  private fileConflict(text: string) {
+    this.conflictText = text;
+    this.state.conflict = this.conflictInfo(
+      'file',
+      (() => {
+        try {
+          return JSON.parse(text) as unknown;
+        } catch {
+          return undefined;
+        }
+      })(),
+    );
+    this.state.status = 'conflict';
+    this.state.message =
+      'Il JSON è cambiato fuori dall’app. Scrittura bloccata: scarica la tua copia prima di scegliere quale conservare.';
     this.emit();
+  }
+
+  private hasCacheConflict(): boolean {
+    return this.state.conflict?.source === 'cache';
   }
 
   /** Serializza le scritture e mantiene le modifiche effettuate durante close(). */
   flush(): Promise<void> {
     clearTimeout(this.timer);
+    // La cache non attende né uno stream lento né la coda delle scritture esterne.
+    const cached = this.remember();
     this.queue = this.queue.then(async () => {
-      await this.remember();
-      if (!this.handle || this.state.status === 'conflict' || this.state.status === 'error') {
+      await cached;
+      if (
+        !this.handle ||
+        this.state.conflict ||
+        this.state.status === 'conflict' ||
+        this.state.status === 'error'
+      ) {
         if (this.state.status === 'pending') {
           this.state.status = 'export';
           this.state.message = 'Modifiche non esportate: scarica il file JSON aggiornato.';
@@ -148,7 +235,7 @@ export class FileSession<T extends SessionData = SpikeData> {
         this.emit();
         return;
       }
-      if (!this.state.unexported) return;
+      if (!this.filePending) return;
       const data = this.state.data;
       const text = this.codec.serialize(data);
       this.state.status = 'saving';
@@ -160,14 +247,24 @@ export class FileSession<T extends SessionData = SpikeData> {
           throw new Error('Permesso di scrittura revocato. Ricollega il file o scarica il JSON.');
         }
         const current = await (await this.handle.getFile()).text();
+        if (this.hasCacheConflict()) return;
         if (current !== this.baseline) {
-          this.state.status = 'conflict';
-          this.state.message =
-            'Il JSON è cambiato fuori dall’app. Scrittura bloccata: scarica la tua copia prima di importare quella esterna.';
+          this.fileConflict(current);
           return;
         }
         const stream = await this.handle.createWritable();
         try {
+          // Riduce la finestra tra lettura e scrittura, senza promettere un CAS del filesystem.
+          const latest = await (await this.handle.getFile()).text();
+          if (this.hasCacheConflict()) {
+            await stream.abort().catch(() => undefined);
+            return;
+          }
+          if (latest !== current) {
+            await stream.abort().catch(() => undefined);
+            this.fileConflict(latest);
+            return;
+          }
           await stream.write(text);
           await stream.close();
         } catch (error) {
@@ -175,15 +272,23 @@ export class FileSession<T extends SessionData = SpikeData> {
           throw error;
         }
         this.baseline = text;
-        if (this.state.data.revision === data.revision) this.state.unexported = false;
-        this.state.status = this.state.unexported ? 'pending' : 'saved';
-        this.state.message = this.state.unexported
-          ? 'Nuove modifiche in attesa.'
-          : 'Salvato nel file associato (scrittura confermata).';
+        if (this.state.data === data) {
+          this.state.unexported = false;
+          this.filePending = false;
+        }
+        if (!this.state.conflict) {
+          this.state.status = this.filePending ? 'pending' : 'saved';
+          this.state.message = this.filePending
+            ? 'Nuove modifiche in attesa.'
+            : 'Salvato nel file associato (scrittura confermata).';
+        } else this.state.status = 'conflict';
         await this.remember();
       } catch (error) {
-        this.state.status = 'error';
-        this.state.message = error instanceof Error ? error.message : 'Scrittura fallita.';
+        if (this.state.conflict) this.state.status = 'conflict';
+        else {
+          this.state.status = 'error';
+          this.state.message = error instanceof Error ? error.message : 'Scrittura fallita.';
+        }
       } finally {
         this.emit();
       }
@@ -202,6 +307,8 @@ export class FileSession<T extends SessionData = SpikeData> {
 
   async create(handle: LocalHandle) {
     await this.flush();
+    if (this.state.conflict?.source === 'cache')
+      throw new Error('Risolvi prima il conflitto tra le copie nel browser.');
     await this.safeHandle(handle);
     const text = await (await handle.getFile()).text();
     if (text.length) {
@@ -214,13 +321,20 @@ export class FileSession<T extends SessionData = SpikeData> {
     this.state.mode = 'automatic';
     this.state.status = 'pending';
     this.state.unexported = true;
+    this.filePending = true;
+    this.state.conflict = undefined;
     await this.flush();
   }
 
   async import(text: string, handle?: LocalHandle) {
-    await this.flush();
-    if (handle) await this.safeHandle(handle);
+    // Validare prima di qualsiasi I/O: un import invalido non attiva scritture.
     const data = this.codec.parse(text, this.state.data.document.sha256);
+    await this.flush();
+    if (this.state.conflict?.source === 'cache')
+      throw new Error('Risolvi prima il conflitto tra le copie nel browser.');
+    if (handle) await this.safeHandle(handle);
+    if (handle && (await (await handle.getFile()).text()) !== text)
+      throw new Error('Il file è cambiato durante l’importazione. Selezionalo nuovamente.');
     // Il chiamante deve ottenere conferma prima di sostituire la copia corrente.
     this.state.data = data;
     this.handle = this.rememberedHandle = handle;
@@ -229,7 +343,9 @@ export class FileSession<T extends SessionData = SpikeData> {
     this.state.fileName = handle?.name;
     this.state.mode = handle ? 'automatic' : 'manual';
     this.state.unexported = false;
+    this.filePending = false;
     this.state.cachePending = true;
+    this.state.conflict = undefined;
     this.state.status = handle ? 'saved' : 'export';
     this.state.message = handle
       ? 'File associato letto; aggiornamento automatico attivo.'
@@ -245,20 +361,99 @@ export class FileSession<T extends SessionData = SpikeData> {
     if (permission !== 'granted')
       throw new Error('Permesso negato. Puoi ancora scaricare il JSON.');
     await this.flush();
+    if (this.state.conflict?.source === 'cache')
+      throw new Error('Risolvi prima il conflitto tra le copie nel browser.');
     const current = await (await handle.getFile()).text();
-    this.codec.parse(current, this.state.data.document.sha256);
     if (current !== this.baseline) {
-      throw new Error(
-        'Il file esterno è cambiato. Scarica la copia locale e importa il JSON esterno.',
-      );
+      this.fileConflict(current);
+      return;
     }
+    this.codec.parse(current, this.state.data.document.sha256);
     this.handle = handle;
     this.state.mode = 'automatic';
     this.state.fileName = handle.name;
-    this.state.status = this.state.unexported ? 'pending' : 'saved';
+    this.state.status = this.filePending ? 'pending' : 'saved';
     this.state.message = 'File ricollegato con permesso di scrittura.';
+    this.state.conflict = undefined;
     await this.flush();
     this.emit();
+  }
+
+  /** Nessun merge automatico. Il chiamante deve confermare la sostituzione. */
+  async resolveConflict(choice: 'local' | 'external') {
+    await this.flush();
+    const conflict = this.state.conflict;
+    if (!conflict) return;
+    if (!conflict.canUseExternal)
+      throw new Error(
+        'La copia esterna non è valida o usa uno schema non supportato. Scarica la copia locale in un nuovo file.',
+      );
+    if (conflict.source === 'cache') {
+      const copy = await this.cache.read(this.state.data.document.sha256);
+      if (!copy || copy.cacheToken !== this.conflictCopy?.cacheToken) {
+        this.conflictCopy = copy;
+        this.state.conflict = this.conflictInfo('cache', copy?.data);
+        this.emit();
+        throw new Error('La copia nel browser è cambiata ancora. Controlla e ripeti la scelta.');
+      }
+      const external = this.codec.parse(
+        this.codec.serialize(copy.data),
+        this.state.data.document.sha256,
+      );
+      this.cacheToken = copy.cacheToken ?? null;
+      if (choice === 'external') {
+        this.state.data = external;
+        this.baseline = copy.baseline;
+        this.rememberedHandle = copy.sidecarHandle;
+        this.state.unexported = copy.unexported;
+        this.filePending = copy.filePending ?? copy.unexported;
+        this.state.cachePending = false;
+      } else {
+        this.state.unexported = true;
+        this.filePending = true;
+        this.state.cachePending = true;
+      }
+      // Una scelta sulla cache non autorizza la sovrascrittura del file esterno.
+      this.handle = undefined;
+      this.state.mode = 'manual';
+      this.state.canReconnect = !!this.rememberedHandle;
+      this.state.conflict = undefined;
+      this.state.status = 'export';
+      this.state.message =
+        'Copia scelta nel browser. Scarica il JSON oppure ricollega il file esterno.';
+      if (choice === 'local') await this.remember();
+      this.emit();
+      return;
+    }
+    const handle = this.handle ?? this.rememberedHandle;
+    if (!handle) throw new Error('Ricollega prima il file esterno.');
+    const text = await (await handle.getFile()).text();
+    if (text !== this.conflictText) {
+      this.fileConflict(text);
+      throw new Error('Il file è cambiato ancora. Controlla e ripeti la scelta.');
+    }
+    const external = this.codec.parse(text, this.state.data.document.sha256);
+    if (choice === 'external') {
+      await this.import(text, handle);
+      return;
+    }
+    if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted')
+      throw new Error(
+        'Permesso di scrittura non disponibile. Scarica la copia locale in un nuovo file.',
+      );
+    this.handle = handle;
+    this.baseline = text;
+    const revised = {
+      ...this.state.data,
+      revision: Math.max(this.state.data.revision, external.revision) + 1,
+    };
+    this.state.data = this.codec.touch?.(revised) ?? revised;
+    this.state.conflict = undefined;
+    this.state.status = 'pending';
+    this.state.unexported = true;
+    this.filePending = true;
+    this.state.mode = 'automatic';
+    await this.flush();
   }
 
   async exported(revision: number) {
@@ -266,9 +461,28 @@ export class FileSession<T extends SessionData = SpikeData> {
     if (this.state.data.revision === revision) {
       this.state.unexported = false;
       this.state.cachePending = false;
+      if (!this.handle && this.state.status === 'pending') this.state.status = 'export';
     }
-    this.state.message = 'Download avviato: verifica di aver conservato il JSON aggiornato.';
+    if (!this.state.conflict)
+      this.state.message = 'Download avviato: verifica di aver conservato il JSON aggiornato.';
+    this.emit();
     await this.remember();
+    this.emit();
+  }
+
+  /** Il download resta accessibile anche quando uno stream esterno è bloccato. */
+  persistLocal(): Promise<void> {
+    return this.remember();
+  }
+
+  /** Copia esatta rilevata al momento del conflitto, senza conversioni di schema. */
+  conflictExport(): string | undefined {
+    if (!this.state.conflict) return undefined;
+    return this.state.conflict?.source === 'file'
+      ? this.conflictText
+      : this.conflictCopy
+        ? JSON.stringify(this.conflictCopy.data, null, 2) + '\n'
+        : undefined;
   }
 
   async close() {

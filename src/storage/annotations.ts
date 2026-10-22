@@ -17,5 +17,6 @@ export function annotationSession(
     create: createAnnotations,
     parse: parseAnnotations,
     serialize: serializeAnnotations,
+    touch: (data) => ({ ...data, updatedAt: new Date().toISOString() }),
   });
 }

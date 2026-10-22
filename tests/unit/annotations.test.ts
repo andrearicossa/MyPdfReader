@@ -108,6 +108,18 @@ describe('Ancore e JSON annotazioni', () => {
     d.position = { page: 1, offset: 6, anchor: anchor(), figure: 'p1-f1', fraction: 0.25 };
     expect(parseAnnotations(serializeAnnotations(d), doc.sha256).position).toEqual(d.position);
   });
+  it('compatibilità v1: nessuna migrazione distruttiva, updatedAt opzionale conservato', () => {
+    const legacy = data();
+    expect(parseAnnotations(serializeAnnotations(legacy), doc.sha256)).toEqual(legacy);
+    expect(parseAnnotations(serializeAnnotations(legacy), doc.sha256)).not.toHaveProperty(
+      'updatedAt',
+    );
+    const modern = { ...legacy, updatedAt: '2026-10-22T12:30:00.000Z' };
+    expect(parseAnnotations(serializeAnnotations(modern), doc.sha256)).toEqual(modern);
+  });
+  it.each(['non una data', 42, null])('rifiuta updatedAt non valido: %s', (updatedAt) => {
+    expect(() => parseAnnotations(JSON.stringify({ ...data(), updatedAt }), doc.sha256)).toThrow();
+  });
   it('rifiuta ancora del punto su altra pagina', () => {
     const d = data();
     d.position = { page: 1, offset: 6, anchor: { ...anchor(), page: 2 } };
@@ -138,6 +150,7 @@ describe('Sessione annotazioni separata dalla prova tecnica', () => {
     await session.flush();
     expect(session.state.unexported).toBe(true);
     expect(session.state.data.revision).toBe(1);
+    expect(Number.isFinite(Date.parse(session.state.data.updatedAt!))).toBe(true);
     const next = annotationSession(doc, storage);
     await next.restore();
     expect(next.state.data.annotations).toHaveLength(1);

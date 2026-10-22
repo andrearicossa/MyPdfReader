@@ -4,25 +4,41 @@ Lettore PDF leggero e open source: il testo del documento si legge come un ebook
 regolabile. Il PDF originale non viene mai modificato. Evidenziazioni, note e posizione
 di lettura sono conservate in un file JSON separato, portabile su altri dispositivi.
 
-**Stato: Fase 4, versione `0.3.0-annotations.1` (annotazioni e punto di lettura).**
+**Stato: Fase 5, versione `0.4.0-persistence.1` (persistenza e recupero).**
+Layout UI 01 desktop/mobile approvato per la Fase 6, non anticipato in questa
+release. Vedi [ADR-006](docs/ADR-006-persistenza.md) e
+[QA della Fase 5](docs/qa-fase5.md).
 La PWA estrae nel worker PDF.js solo la pagina selezionata, senza elaborare le altre
 in anticipo. Mantiene una cache LRU di 8 pagine visitate e ricostruisce paragrafi,
 titoli, box rettangolari semplici e citazioni rientrate con attribuzione esplicita.
 Il testo nei gruppi resta selezionabile; le immagini vere restano ritagli su richiesta.
 Il file PDF viene comunque letto interamente per caricamento e hash, non a intervalli.
-Include confronto con
-l'Originale e avvisi per layout non supportati. La vista principale ha scorrimento
-progressivo, finestra di cinque pagine, tipografia regolabile e figure con zoom.
-Le preferenze globali sono in un database IndexedDB separato; in caso di errore
-restano temporanee con avviso. Selezionando il testo è possibile evidenziare in quattro
-colori o aggiungere una nota, anche nei box e nelle citazioni. La colonna annotazioni
-desktop diventa un pannello sotto la lettura sui viewport stretti; permette salto al
-passaggio, modifica e cancellazione confermata. Le ancore sono testuali, non in pixel;
-quelle non risolte o ambigue conservano la nota senza applicare evidenziazioni arbitrarie.
-La posizione nel testo o nella figura viene salvata nello stesso JSON.
-Il vecchio pannello della Fase 1 è una prova tecnica separata, collassata per default:
-il suo formato `fluido/file-spike v1` non è compatibile con `fluido/annotations v1`.
-Il relativo database non viene migrato né sovrascritto.
+
+## Come conservare il lavoro
+
+- Crea o collega un JSON delle annotazioni per la scrittura automatica, se il
+  browser supporta File System Access e concedi il permesso. Alla riapertura è
+  necessario ricollegare esplicitamente il file, senza permessi impliciti.
+- In alternativa scarica il JSON aggiornato. La cache nel browser non sostituisce
+  il file e non sincronizza i dispositivi.
+- Per cambiare dispositivo porta PDF e JSON, apri il PDF e importa il JSON.
+  Preferenze di lettura globali per dispositivo, non nel JSON.
+- In caso di conflitto conserva entrambe le copie con i pulsanti di download;
+  scegli poi quale usare. Date e revisioni non determinano un vincitore automatico.
+  Non si sovrascrive uno schema futuro o un file relativo a un altro PDF.
+  Include confronto con
+  l'Originale e avvisi per layout non supportati. La vista principale ha scorrimento
+  progressivo, finestra di cinque pagine, tipografia regolabile e figure con zoom.
+  Le preferenze globali sono in un database IndexedDB separato; in caso di errore
+  restano temporanee con avviso. Selezionando il testo è possibile evidenziare in quattro
+  colori o aggiungere una nota, anche nei box e nelle citazioni. La colonna annotazioni
+  desktop diventa un pannello sotto la lettura sui viewport stretti; permette salto al
+  passaggio, modifica e cancellazione confermata. Le ancore sono testuali, non in pixel;
+  quelle non risolte o ambigue conservano la nota senza applicare evidenziazioni arbitrarie.
+  La posizione nel testo o nella figura viene salvata nello stesso JSON.
+  Il vecchio pannello della Fase 1 è una prova tecnica separata, collassata per default:
+  il suo formato `fluido/file-spike v1` non è compatibile con `fluido/annotations v1`.
+  Il relativo database non viene migrato né sovrascritto.
 
 La scrittura diretta è disponibile solo se il browser espone le API e l'utente concede i
 permessi; altrove importazione/download sono espliciti, con avviso prima dell'uso.
@@ -40,8 +56,9 @@ Per la vista fluida: [ADR-004](docs/ADR-004-lettura-fluida.md) e
 [QA Fase 3](docs/qa-fase3.md). Il sito Azure è il riferimento funzionale;
 l'anteprima incorporata può impedire l'avvio del worker PDF.
 Per le annotazioni: [ADR-005](docs/ADR-005-annotazioni.md) e
-[QA Fase 4](docs/qa-fase4.md). La Fase 5 deve ancora finalizzare la persistenza e
-le migrazioni: il riuso dell'adattatore della Fase 1 non chiude tutti i suoi gate.
+[QA Fase 4](docs/qa-fase4.md). La Fase 5 finalizza il recupero dei conflitti e
+la compatibilità v1 in [ADR-006](docs/ADR-006-persistenza.md); non chiude i gate
+dei dispositivi reali. Schema invariato, nessuna conversione distruttiva.
 
 ## Annotare e portare le note su un altro dispositivo
 

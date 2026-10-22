@@ -38,6 +38,8 @@ export type AnnotationData = {
   normalization: 'fluido-text/2';
   document: SpikeData['document'];
   revision: number;
+  /** Metadato opzionale aggiunto senza cambiare il formato v1 della Fase 4. */
+  updatedAt?: string;
   draftNote: string;
   annotations: Annotation[];
   position: ReadingPosition;
@@ -135,6 +137,8 @@ export function parseAnnotations(text: string, hash: string): AnnotationData {
     !string(doc.fileName, 1000) ||
     !integer(doc.size, 0) ||
     !integer(d.revision, 0) ||
+    (d.updatedAt !== undefined &&
+      (!string(d.updatedAt, 40) || !Number.isFinite(Date.parse(d.updatedAt)))) ||
     !string(d.draftNote, 100_000) ||
     !integer(pos.page, 1, 1_000_000) ||
     !integer(pos.offset, 0) ||
@@ -222,6 +226,7 @@ export function parseAnnotations(text: string, hash: string): AnnotationData {
     normalization: 'fluido-text/2',
     document: { sha256: doc.sha256, fileName: doc.fileName, size: doc.size },
     revision: d.revision,
+    ...(d.updatedAt === undefined ? {} : { updatedAt: d.updatedAt as string }),
     draftNote: d.draftNote,
     annotations,
     position: {

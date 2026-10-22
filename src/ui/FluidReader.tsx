@@ -368,7 +368,7 @@ export function FluidReader({
     <section class="fluid-reader" aria-labelledby="fluid-title" data-testid="fluid-reader">
       <div class="flow-heading">
         <div>
-          <p class="eyebrow">FASE 4 · LETTURA E ANNOTAZIONI</p>
+          <p class="eyebrow">LETTURA E ANNOTAZIONI</p>
           <h2 id="fluid-title">Il testo, al tuo ritmo</h2>
         </div>
         <p class="small-note" data-testid="flow-current">
