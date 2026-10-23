@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openAppearance, closePanel, technical } from './reader-ui';
 import { createHash } from 'node:crypto';
 import {
   makePdf,
@@ -88,13 +89,13 @@ test('lettura principale, una sola pagina iniziale, salto e finestra DOM limitat
   await page.getByTestId('flow-original').click();
   await expect(page.locator('[data-flow-page="121"]')).toBeVisible();
   expect(await requested()).toContain(121);
-  await page.getByRole('button', { name: 'Vista tecnica', exact: true }).click();
+  await technical(page);
   await expect(page.getByTestId('engine-panel')).toBeVisible();
 });
 
 test('preferenze globali persistenti, tutti i temi, box e testo responsive', async ({ page }) => {
   await open(page, boxedQuotePdf());
-  await page.getByText('Impostazioni di lettura', { exact: true }).click();
+  await openAppearance(page);
   await expect(page.getByTestId('reading-font')).toBeEnabled();
   await page.getByTestId('reading-font').selectOption('sans');
   await page.getByTestId('reading-size').focus();
@@ -124,7 +125,7 @@ test('preferenze globali persistenti, tutti i temi, box e testo responsive', asy
   await page.context().setOffline(true);
   await page.reload();
   await open(page, boxedQuotePdf());
-  await page.getByText('Impostazioni di lettura', { exact: true }).click();
+  await openAppearance(page);
   await expect(page.getByTestId('reading-size')).toHaveValue('24');
   await expect(page.getByTestId('reading-font')).toHaveValue('sans');
   await expect(page.getByTestId('reading-theme')).toHaveValue('sepia');
@@ -165,13 +166,14 @@ test('scorrimento progressivo e ritorno dall’Originale alla posizione nel test
       return (el.getBoundingClientRect().top + 12 - block.top) / block.height;
     });
   const oldFraction = await fraction();
-  await page.getByText('Impostazioni di lettura', { exact: true }).click();
+  await openAppearance(page);
   await page.getByTestId('reading-size').focus();
   await page.keyboard.press('End');
   await expect.poll(async () => Math.abs((await fraction()) - oldFraction)).toBeLessThan(0.04);
   await page.setViewportSize({ width: 375, height: 900 });
   await expect.poll(async () => Math.abs((await fraction()) - oldFraction)).toBeLessThan(0.05);
   await page.setViewportSize({ width: 1280, height: 900 });
+  await closePanel(page);
   await page.getByTestId('flow-original').click();
   await expect(page.getByTestId('original-canvas')).toBeVisible();
   await page.getByTestId('flow-original').click();
@@ -327,7 +329,7 @@ test('IndexedDB preferenze non disponibile: lettura e controlli non si bloccano'
   });
   await page.reload();
   await open(page, boxedQuotePdf());
-  await page.getByText('Impostazioni di lettura', { exact: true }).click();
+  await openAppearance(page);
   await expect(page.getByTestId('preferences-status')).toContainText('Preferenze temporanee');
   await page.getByTestId('reading-theme').selectOption('sepia');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sepia');

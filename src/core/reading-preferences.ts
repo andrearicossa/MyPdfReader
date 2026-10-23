@@ -4,6 +4,7 @@ export type ReadingPreferences = {
   size: number;
   lineHeight: number;
   margin: number;
+  notesOpen: boolean;
 };
 export const defaultPreferences: ReadingPreferences = {
   theme: 'light',
@@ -11,6 +12,7 @@ export const defaultPreferences: ReadingPreferences = {
   size: 20,
   lineHeight: 1.7,
   margin: 24,
+  notesOpen: true,
 };
 export function normalizePreferences(value: unknown): ReadingPreferences {
   const v = value && typeof value === 'object' ? (value as Partial<ReadingPreferences>) : {};
@@ -22,6 +24,7 @@ export function normalizePreferences(value: unknown): ReadingPreferences {
     size: Math.round(bounded(v.size, 20, 14, 32)),
     lineHeight: Math.round(bounded(v.lineHeight, 1.7, 1.3, 2.2) * 10) / 10,
     margin: Math.round(bounded(v.margin, 24, 8, 48)),
+    notesOpen: typeof v.notesOpen === 'boolean' ? v.notesOpen : true,
   };
 }
 export function readingWindow<T extends { page: number }>(

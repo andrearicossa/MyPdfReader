@@ -13,7 +13,14 @@ describe('preferenze globali e finestra fluida', () => {
   it('limita tutti i valori numerici e rifiuta NaN/Infinity', () => {
     expect(
       normalizePreferences({ size: 500, lineHeight: 0, margin: 999, font: 'sans', theme: 'sepia' }),
-    ).toEqual({ size: 32, lineHeight: 1.3, margin: 48, font: 'sans', theme: 'sepia' });
+    ).toEqual({
+      size: 32,
+      lineHeight: 1.3,
+      margin: 48,
+      font: 'sans',
+      theme: 'sepia',
+      notesOpen: true,
+    });
     expect(normalizePreferences({ size: NaN, lineHeight: Infinity, margin: '24' })).toEqual(
       defaultPreferences,
     );

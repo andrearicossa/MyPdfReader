@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openFiles, closePanel, openNotes } from './reader-ui';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { boxedQuotePdf } from '../fixtures/pdf-corpus.mjs';
@@ -66,13 +67,16 @@ async function seed(page: Page) {
     .toBe('Nota v1 precedente');
 }
 async function edit(page: Page, note: string) {
+  await openNotes(page);
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
   await page.getByTestId('annotation-note').fill(note);
 }
 async function download(page: Page, testId = 'download-annotations') {
+  await openFiles(page);
   const waiting = page.waitForEvent('download');
   await page.getByTestId(testId).click();
   const file = await waiting;
+  if (testId === 'download-annotations') await closePanel(page);
   return JSON.parse(await readFile((await file.path())!, 'utf8')) as AnnotationData;
 }
 
@@ -153,11 +157,20 @@ for (const choice of ['local', 'external'] as const) {
       .toBe('Prima scheda conserva questa');
     await edit(second, 'Seconda scheda conserva questa');
     await expect(second.getByTestId('persistence-conflict')).toContainText('Due copie nel browser');
+    await expect(second.getByTestId('reader-persistence-warning')).toBeVisible();
+    await second.getByTestId('reader-notes').click();
+    await second.getByTestId('reader-focus').click();
+    await expect(second.getByTestId('reader-persistence-warning')).toBeVisible();
+    await second.getByRole('button', { name: 'Risolvi', exact: true }).click();
+    await expect(second.getByTestId('file-panel')).toBeVisible();
+    await closePanel(second);
+    await second.getByTestId('reader-exit-focus').click();
     expect((await cached(second))?.annotations[0]?.note).toBe('Prima scheda conserva questa');
     expect((await download(second, 'download-conflict-external')).annotations[0]?.note).toBe(
       'Prima scheda conserva questa',
     );
     expect((await download(second)).annotations[0]?.note).toBe('Seconda scheda conserva questa');
+    await openFiles(second);
     await expect(second.getByTestId('persistence-conflict')).toBeVisible();
     // Annullare non seleziona una copia.
     second.once('dialog', (dialog) => dialog.dismiss());
@@ -226,6 +239,7 @@ test('OPFS: scelte esterna/locale, file futuro protetto e download delle due cop
   await page.reload();
   await open(page);
   await seed(page);
+  await openFiles(page);
   await page.getByRole('button', { name: 'Crea file annotazioni', exact: true }).click();
   await expect(page.getByTestId('annotation-save-status')).toContainText('scrittura confermata');
   const mutate = async (note: string, future = false) =>
@@ -272,6 +286,7 @@ test('OPFS: scelte esterna/locale, file futuro protetto e download delle due cop
   await expect(page.getByTestId('persistence-conflict')).toHaveCount(0);
   await mutate('Seconda versione esterna');
   await edit(page, 'Seconda versione locale');
+  await openFiles(page);
   await expect(page.getByTestId('persistence-conflict')).toBeVisible();
   page.once('dialog', (d) => d.accept());
   await page.getByTestId('resolve-conflict-local').click();
@@ -279,6 +294,7 @@ test('OPFS: scelte esterna/locale, file futuro protetto e download delle due cop
   await expect.poll(diskNote).toBe('Seconda versione locale');
   await expect(page.getByTestId('annotation-save-status')).toContainText('scrittura confermata');
   await mutate('File futuro intatto', true);
+  await closePanel(page);
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
   await page.getByTestId('annotation-note').fill('Recupero locale da schema futuro');
   await expect(page.getByTestId('resolve-conflict-local')).toBeDisabled();

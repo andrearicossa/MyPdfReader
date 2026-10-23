@@ -70,11 +70,13 @@ describe('Ciclo del file con adattatori simulati (AC-15, AC-16, AC-17, AC-29, AC
     const session = new FileSession(document, memoryCache());
     await session.create(file.handle);
     session.update('Nota reale', 42);
+    expect(session.state.writeConfirmed).toBe(false);
     expect(session.state.status).toBe('pending');
     await session.flush();
     expect(JSON.parse(file.state.text).draftNote).toBe('Nota reale');
     expect(JSON.parse(file.state.text).position.page).toBe(42);
     expect(session.state.status).toBe('saved');
+    expect(session.state.writeConfirmed).toBe(true);
     expect(session.state.unexported).toBe(false);
     await session.close();
   });
@@ -102,6 +104,7 @@ describe('Ciclo del file con adattatori simulati (AC-15, AC-16, AC-17, AC-29, AC
     session.update('non perdere', 5);
     await session.flush();
     expect(session.state.status).toBe('error');
+    expect(session.state.writeConfirmed).toBe(false);
     expect(session.state.unexported).toBe(true);
     expect(cache.copy?.data.draftNote).toBe('non perdere');
     expect(file.state.text).not.toContain('non perdere');

@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks';
+import { version } from '../../package.json';
 import { FileWorkbench } from './FileWorkbench';
 import { PreferencesContext, usePreferencesController } from './preferences';
 
@@ -33,8 +34,7 @@ export function App() {
 
         <footer class="app-footer">
           <p>
-            Fluido v0.4.0-persistence.1 · Fase 5 ·{' '}
-            <a href="https://opensource.org/licenses/MIT">MIT</a>
+            Fluido v{version} · Fase 6 · <a href="https://opensource.org/licenses/MIT">MIT</a>
             {' · '}
             <a href="./pdfjs/LICENSE" download="PDF.js-LICENSE.txt">
               Licenza PDF.js

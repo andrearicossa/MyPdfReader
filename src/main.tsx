@@ -5,6 +5,7 @@ import './styles/base.css';
 import './styles/app.css';
 import './styles/reader.css';
 import './styles/annotations.css';
+import './styles/layout.css';
 import { registerPwa } from './pwa/register';
 
 render(<App />, document.getElementById('app')!);

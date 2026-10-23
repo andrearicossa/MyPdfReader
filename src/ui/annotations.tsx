@@ -16,7 +16,12 @@ function useController(session: AnnotationSession) {
   const [state, setState] = useState<FileState<AnnotationData>>({ ...session.state });
   const [selection, setSelection] = useState<TextAnchor>();
   const [selectionError, setSelectionError] = useState('');
-  const [selectedId, select] = useState<string>();
+  const [selectedId, setSelectedId] = useState<string>();
+  const [selectionRequest, setSelectionRequest] = useState(0);
+  const select = (id: string | undefined) => {
+    setSelectedId(id);
+    if (id) setSelectionRequest((old) => old + 1);
+  };
   const [navigation, setNavigation] = useState<{
     position: ReadingPosition;
     token: number;
@@ -103,6 +108,7 @@ function useController(session: AnnotationSession) {
     selectionError,
     setSelectionError,
     selectedId,
+    selectionRequest,
     select,
     navigation,
     go,

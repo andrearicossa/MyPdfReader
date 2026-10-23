@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
+import { openFiles, closePanel, openNotes, openAppearance, technical } from './reader-ui';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { boxedQuotePdf, makePdf, text, simplePdf, columnsPdf } from '../fixtures/pdf-corpus.mjs';
@@ -51,10 +52,12 @@ async function selectText(page: Page, first: Locator, start: number, end: number
   await page.mouse.up();
 }
 async function download(page: Page): Promise<AnnotationData> {
+  await openFiles(page);
   const promise = page.waitForEvent('download');
   await page.getByTestId('download-annotations').click();
   const file = await promise;
   expect(file.suggestedFilename()).toBe('studio.annotations.json');
+  await closePanel(page);
   return JSON.parse(await readFile((await file.path())!, 'utf8')) as AnnotationData;
 }
 const uploadJson = async (page: Page, data: AnnotationData | string) =>
@@ -97,16 +100,19 @@ test('AC-12/13/14: selezione reale in box, modifica nota, colori, reflow e cance
   await expect(page.locator('mark.highlight-rose')).toHaveText('Primo paragrafo nel box:');
   await expect(page.getByTestId('annotation-card')).toContainText('<script>non eseguire</script>');
   await page.getByRole('button', { name: 'Chiudi nota', exact: true }).click();
-  await page.getByText('Impostazioni di lettura', { exact: true }).click();
+  await openAppearance(page);
   await page.getByTestId('reading-size').focus();
   await page.keyboard.press('End');
   await page.getByTestId('reading-font').selectOption('sans');
   await page.setViewportSize({ width: 375, height: 900 });
   await expect(page.locator('mark')).toHaveText('Primo paragrafo nel box:');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await closePanel(page);
+  await openNotes(page);
   await page.getByRole('button', { name: 'Vai al passaggio', exact: true }).click();
   await expect(page.getByTestId('annotation-editor')).toHaveCount(0);
   await expect(page.locator('mark')).toBeInViewport();
+  await openNotes(page);
   await page.getByRole('button', { name: 'Modifica', exact: true }).click();
   await expect(page.getByTestId('annotation-note')).toHaveValue(
     'Nota caffè 日本語 <script>non eseguire</script>',
@@ -121,10 +127,7 @@ test('AC-12/13/14: selezione reale in box, modifica nota, colori, reflow e cance
   await expect(page.getByTestId('annotation-card')).toHaveCount(0);
   await expect(page.locator('mark')).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(page.getByRole('button', { name: 'Annotazioni (0)', exact: true })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  );
+  await expect(page.getByTestId('reader-notes')).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('selezione inversa, sovrapposizioni e attribuzione della citazione', async ({ page }) => {
@@ -133,7 +136,7 @@ test('selezione inversa, sovrapposizioni e attribuzione della citazione', async 
   await selectText(page, paragraph, 24, 0);
   await page.getByRole('button', { name: 'Evidenzia', exact: true }).click();
   await selectText(page, paragraph, 10, 32);
-  await page.getByRole('combobox', { name: 'Colore nuova evidenziazione' }).selectOption('blue');
+  await page.getByRole('button', { name: 'Colore: Azzurro', exact: true }).click();
   await page.getByRole('button', { name: 'Evidenzia', exact: true }).click();
   await expect(page.getByTestId('annotation-card')).toHaveCount(2);
   await expect(page.locator('mark[data-annotation-ids*=" "]')).toHaveCount(1);
@@ -181,10 +184,12 @@ test('AC-22: export e import in contesto pulito, font diverso, PDF invariato e o
   await fallback(other);
   await other.goto('/');
   await open(other, pdf);
-  await other.getByText('Impostazioni di lettura', { exact: true }).click();
+  await openAppearance(other);
   await other.getByTestId('reading-size').focus();
   await other.keyboard.press('End');
+  await closePanel(other);
   await uploadJson(other, result);
+  await openNotes(other);
   await expect(other.getByTestId('annotation-card')).toContainText('Portabile');
   await expect(other.locator('mark')).toHaveText('Primo paragrafo nel box:');
   await expect(other.getByTestId('reading-size')).toHaveValue('32');
@@ -193,6 +198,7 @@ test('AC-22: export e import in contesto pulito, font diverso, PDF invariato e o
   await otherContext.setOffline(true);
   await other.reload();
   await open(other, pdf);
+  await openNotes(other);
   await expect(other.getByTestId('annotation-card')).toContainText('Portabile');
   await expect(other.locator('mark')).toHaveText('Primo paragrafo nel box:');
   await otherContext.close();
@@ -227,7 +233,7 @@ test('AC-18: posizione interna al paragrafo e ripristino pagina senza estrarre l
   await expect
     .poll(() => page.getByTestId('flow-viewport').evaluate((el) => el.scrollTop))
     .toBeGreaterThan(100);
-  await page.getByRole('button', { name: 'Vista tecnica', exact: true }).click();
+  await technical(page);
   await page.getByRole('button', { name: 'Lettura fluida', exact: true }).click();
   await expect(page.getByTestId('flow-current')).toHaveText('Pagina 3 di 4');
   const exported = await download(page);
@@ -281,6 +287,7 @@ test('ancore riallineate o non risolte e import non valido conservano le note', 
   await expect(page.getByTestId('annotation-card')).toContainText('Ancora ambigua');
   await expect(page.locator('mark')).toHaveCount(0);
   await uploadJson(page, '{"schema":"errato"}');
+  await openFiles(page);
   await expect(page.getByTestId('annotations-error')).toBeVisible();
   await expect(page.getByTestId('annotation-card')).toContainText('Conservare');
   const mismatch = structuredClone(missing);
@@ -421,8 +428,10 @@ test('annotazioni con handle reali OPFS: scrittura confermata, riapertura e conf
   await page.reload();
   await page.getByTestId('button-open-pdf').click();
   await expect(page.getByTestId('reading-box')).toBeVisible();
+  await openFiles(page);
   await page.getByRole('button', { name: 'Crea file annotazioni', exact: true }).click();
   await expect(page.getByTestId('annotation-save-status')).toContainText('scrittura confermata');
+  await closePanel(page);
   await selectText(
     page,
     page.getByTestId('reading-box').locator('[data-text-start]').first(),
@@ -444,7 +453,9 @@ test('annotazioni con handle reali OPFS: scrittura confermata, riapertura e conf
   await page.reload();
   await page.getByTestId('button-reopen-pdf').click();
   await expect(page.getByTestId('annotation-card')).toContainText('Nota su file reale');
+  await openFiles(page);
   await page.getByRole('button', { name: 'Ricollega annotazioni', exact: true }).click();
+  await closePanel(page);
   await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory(),
       handle = await root.getFileHandle('studio.annotations.json');

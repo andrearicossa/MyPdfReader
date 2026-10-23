@@ -18,6 +18,22 @@ export function showUpdateBanner(applyUpdate: () => void) {
   button.textContent = 'Aggiorna ora';
   button.addEventListener('click', applyUpdate);
 
-  banner.append(text, button);
+  const later = document.createElement('button');
+  later.type = 'button';
+  later.textContent = 'Più tardi';
+  later.className = 'update-later';
+  later.addEventListener('click', () => {
+    observer.disconnect();
+    banner.remove();
+    document.documentElement.style.removeProperty('--pwa-update-height');
+  });
+  const observer = new ResizeObserver(() => {
+    document.documentElement.style.setProperty(
+      '--pwa-update-height',
+      `${banner.getBoundingClientRect().height}px`,
+    );
+  });
+  banner.append(text, button, later);
   document.body.append(banner);
+  observer.observe(banner);
 }

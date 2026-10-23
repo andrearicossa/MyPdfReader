@@ -9,11 +9,15 @@ export function ReaderWorkspace({
   originalUrl,
   session,
   fileName,
+  onOpenPdf,
+  onStandardPdf,
 }: {
   reader: DocumentReader;
   originalUrl: string;
   session: AnnotationSession;
   fileName: string;
+  onOpenPdf(): void;
+  onStandardPdf(): void;
 }) {
   const [technical, setTechnical] = useState(
     () => new URLSearchParams(window.location.search).get('view') === 'technical',
@@ -43,7 +47,14 @@ export function ReaderWorkspace({
         {technical ? (
           <EnginePanel reader={reader} originalUrl={originalUrl} />
         ) : (
-          <FluidReader reader={reader} originalUrl={originalUrl} />
+          <FluidReader
+            reader={reader}
+            originalUrl={originalUrl}
+            fileName={fileName}
+            onOpenPdf={onOpenPdf}
+            onStandardPdf={onStandardPdf}
+            onTechnical={() => setTechnical(true)}
+          />
         )}
       </section>
     </AnnotationProvider>

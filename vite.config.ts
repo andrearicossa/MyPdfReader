@@ -18,7 +18,8 @@ export default defineConfig({
       workbox: {
         navigateFallback: 'index.html',
         globPatterns: [
-          '**/*.{js,mjs,css,html,svg,png,webmanifest,json,bcmap,pfb,ttf,wasm,bin,icc}',
+          '**/*.{js,mjs,css,html,svg,png,webmanifest,json,bcmap,pfb,ttf,woff2,wasm,bin,icc}',
+          'fonts/OFL-*.txt',
           'pdfjs/**/LICENSE*',
         ],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,

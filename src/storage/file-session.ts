@@ -24,6 +24,8 @@ export type FileState<T = SpikeData> = {
   canReconnect: boolean;
   unexported: boolean;
   cachePending: boolean;
+  /** Effimero: collegare/importare un file non prova un commit dello stream. */
+  writeConfirmed?: boolean;
   conflict?: {
     source: 'file' | 'cache';
     externalRevision?: number;
@@ -128,6 +130,7 @@ export class FileSession<T extends SessionData = SpikeData> {
     };
     this.state.data = this.codec.touch?.(revised) ?? revised;
     this.state.unexported = true;
+    this.state.writeConfirmed = false;
     this.state.cachePending = true;
     this.filePending = true;
     // Un conflitto o errore blocca l'autoscrittura fino a un'azione esplicita.
@@ -272,6 +275,7 @@ export class FileSession<T extends SessionData = SpikeData> {
           throw error;
         }
         this.baseline = text;
+        this.state.writeConfirmed = this.state.data === data;
         if (this.state.data === data) {
           this.state.unexported = false;
           this.filePending = false;
@@ -337,6 +341,7 @@ export class FileSession<T extends SessionData = SpikeData> {
       throw new Error('Il file è cambiato durante l’importazione. Selezionalo nuovamente.');
     // Il chiamante deve ottenere conferma prima di sostituire la copia corrente.
     this.state.data = data;
+    this.state.writeConfirmed = false;
     this.handle = this.rememberedHandle = handle;
     this.baseline = handle ? text : undefined;
     this.state.canReconnect = !!handle;

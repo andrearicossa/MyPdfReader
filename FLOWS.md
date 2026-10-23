@@ -1,5 +1,52 @@
 # Main flows
 
+## Esito locale Fase 6
+
+- Release `0.5.0-layout.1`: formattazione, lint, TypeScript e build superati.
+- 113 test unitari e 138 test browser superati; sei esclusioni OPFS previste
+  su Firefox/WebKit. Pubblicazione e collaudo Azure ancora da registrare.
+- Verificato anche lo zoom figura mobile a 125% e la chiusura del pannello.
+
+## Fase 6: inventario prima dell'integrazione UI 01
+
+- Baseline Azure aperta il 23/10/2026: `0.4.0-persistence.1`; repository pulito.
+- Layout approvato: barra 76 px, lettura centrale con larghezza controllata,
+  note laterali 318–320 px; breakpoint 900 px, barra bassa e note sovrapposte.
+- Preservare motore PDF, apertura/riapertura, estrazione per pagina e LRU,
+  box/citazioni, figure/zoom, Originale e collegamento al PDF in nuova scheda.
+- Menu documento: cambia PDF, selettore standard, import/collegamento/download
+  JSON, permessi, dettagli di hash e diagnostica. Nessun dato demo nella release.
+- Stato breve sempre visibile e apribile; conflitto/errore persistente anche in
+  Solo lettura. “JSON aggiornato” solo dopo scrittura riuscita, non al collegamento.
+- Aspetto/Aa: stessi intervalli di font, dimensioni, margini, interlinea, tre
+  temi e ripristino. Preferenza note desktop per dispositivo, non nel JSON.
+- Annotazioni: selezione reale e toolbar contestuale, quattro colori, nota
+  automatica, modifica, conferma cancellazione, Vai al passaggio; chiudere note
+  e Aspetto non cambia punto. Mobile: modale con Escape, focus e ritorno al testo.
+- Navigazione inferiore: precedente/successiva, salto e avanzamento reali.
+  Solo lettura con uscita evidente; errore/annullamento/riprova restano disponibili.
+- Persistenza Fase 5 invariata: cache, autoscrittura, fallback, CAS, due copie,
+  conferme, schemi futuri protetti, update PWA e cambio PDF con dati pendenti.
+- Regressione browser completa e prove nuove: resize desktop/mobile/desktop,
+  chiusura/riapertura pannelli, note lunghe, editor, conflitti, font offline,
+  finestra bassa, 375 px, tre temi e contrasto etichette.
+- Nessuna cancellazione di cache o schema; gate fisici, picker OS e PDF reale
+  ancora aperti, da non dichiarare chiusi con test headless.
+
+## Fase 6: prova interattiva aggiuntiva della PWA
+
+- Aggiornamento reale tra due build con worker attivo: notifica superiore e
+  navigazione inferiore senza sovrapposizione a 1440 e 375 px.
+- Modifica nota, “Aggiorna ora”: alert di protezione, nessun reload. “Più tardi”:
+  notifica rimossa e nota presente. Esportare, riaprire la notifica, aggiornare,
+  riaprire PDF: nota recuperata dal browser.
+- Aprire il PDF originale in nuova scheda: URL `blob:` con pagina reale.
+  Originale interno: canvas PDF.js visibile, ritorno alla lettura riuscito.
+- Due schede con lo stesso PDF, versioni diverse della nota: banner di conflitto
+  presente anche in Solo lettura; “Risolvi” apre il menu file mobile.
+- Immagini controllate: desktop note, scuro, telefono scuro/seppia e note,
+  tablet 768×1024, desktop 1280×500, PWA e conflitti. Nessun nuovo pageerror.
+
 ## Esito Fase 5
 
 - Release `0.4.0-persistence.1`, codice `19a60d8`.

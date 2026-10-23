@@ -10,23 +10,82 @@ import { useAnnotations } from './annotations';
 import { AnnotatedText, type PageHighlight } from './AnnotatedText';
 import { AnnotationPanel, AnnotationSelection } from './AnnotationPanel';
 import { selectedAnchor, visiblePosition, scrollToPosition } from './text-selection';
+import { ReaderDialog } from './ReaderDialog';
+import { version } from '../../package.json';
+import { persistenceLabel, cacheNeedsAttention } from './reader-state';
 
 type Anchor = { page: number; block: string; fraction: number };
 export function FluidReader({
   reader,
   originalUrl,
+  fileName,
+  onOpenPdf,
+  onStandardPdf,
+  onTechnical,
 }: {
   reader: DocumentReader;
   originalUrl: string;
+  fileName: string;
+  onOpenPdf(): void;
+  onStandardPdf(): void;
+  onTechnical(): void;
 }) {
   const { preferences, update, storage, ready } = useReadingPreferences();
   const annotations = useAnnotations();
+  const [panel, setPanel] = useState<'files' | 'appearance'>();
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches);
+  const [mobileNotes, setMobileNotes] = useState(false);
+  const [focus, setFocus] = useState(false);
   const [pages, setPages] = useState<ReadingPage[]>([]);
   const [current, setCurrent] = useState(1);
   const [draft, setDraft] = useState('1');
   const [original, setOriginal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const changeFocus = (value: boolean) => {
+    if (value !== focus && root.current && !original)
+      targetPosition.current = visiblePosition(root.current, pages);
+    setFocus(value);
+  };
+  const notesOpen = !focus && (mobile ? mobileNotes : preferences.notesOpen);
+  const openNotes = () => {
+    changeFocus(false);
+    if (mobile) setMobileNotes(true);
+    else {
+      if (root.current && !original) targetPosition.current = visiblePosition(root.current, pages);
+      update({ notesOpen: true });
+    }
+  };
+  const closeNotes = () => {
+    if (mobile) setMobileNotes(false);
+    else {
+      if (root.current && !original) targetPosition.current = visiblePosition(root.current, pages);
+      update({ notesOpen: false });
+    }
+  };
+  useEffect(() => {
+    document.documentElement.dataset.reading = 'true';
+    const media = window.matchMedia('(max-width: 900px)');
+    const changed = () => {
+      setMobile(media.matches);
+      setMobileNotes(false);
+    };
+    media.addEventListener('change', changed);
+    return () => {
+      delete document.documentElement.dataset.reading;
+      media.removeEventListener('change', changed);
+    };
+  }, []);
+  useEffect(() => {
+    if (annotations.selectedId) openNotes();
+  }, [annotations.selectedId, annotations.selectionRequest]);
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) changeFocus(false);
+    };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [focus, pages, original]);
   const root = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController>();
   const generation = useRef(0);
@@ -93,7 +152,7 @@ export function FluidReader({
     restore.current = undefined;
     savedAnchor.current = capture();
     savedTextPosition.current = visiblePosition(host, pages);
-  }, [pages, preferences, original]);
+  }, [pages, preferences, original, focus]);
   useEffect(() => {
     const host = root.current!;
     const observer = new ResizeObserver(() => {
@@ -365,7 +424,106 @@ export function FluidReader({
     });
   };
   return (
-    <section class="fluid-reader" aria-labelledby="fluid-title" data-testid="fluid-reader">
+    <section
+      class={`fluid-reader ${focus ? 'focus-mode' : ''}`}
+      aria-labelledby="fluid-title"
+      data-testid="fluid-reader"
+      data-notes={notesOpen && !mobile ? 'open' : 'closed'}
+    >
+      <header class="reader-topbar">
+        <span class="reader-wordmark">
+          Fluido<span>.</span>
+        </span>
+        <div class="reader-title">
+          <h1 title={fileName}>{fileName}</h1>
+          <p>PDF locale · sola lettura</p>
+        </div>
+        <button
+          type="button"
+          class={`reader-save ${annotations.state.unexported || annotations.state.conflict || annotations.state.status === 'error' || cacheNeedsAttention(annotations.state) ? 'reader-save-warning' : annotations.state.writeConfirmed && annotations.state.mode === 'automatic' && annotations.state.status === 'saved' ? 'reader-save-confirmed' : 'reader-save-neutral'}`}
+          data-testid="reader-save"
+          onClick={() => setPanel('files')}
+          aria-label={`Stato JSON: ${persistenceLabel(annotations.state)}. Apri dettagli`}
+        >
+          <span class="state-dot" />
+          {persistenceLabel(annotations.state)}
+        </button>
+        <nav class="reader-actions" aria-label="Strumenti di lettura">
+          <button
+            type="button"
+            class="reader-tool"
+            data-testid="flow-original"
+            aria-pressed={original ? 'true' : 'false'}
+            onClick={() => {
+              if (!original) showOriginal();
+              else {
+                setOriginal(false);
+                if (!pages.some((p) => p.page === current)) void load(current, 'jump', true);
+              }
+            }}
+          >
+            <span class="tool-symbol" aria-hidden="true">
+              <svg
+                width="18"
+                height="20"
+                viewBox="0 0 20 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+              >
+                <path d="M4 2h9l4 4v16H4zM13 2v5h4M7 11h7M7 15h7M7 19h4" />
+              </svg>
+            </span>
+            <span>{original ? 'Torna alla lettura' : 'Originale'}</span>
+          </button>
+          <button
+            type="button"
+            class="reader-tool"
+            data-testid="reader-appearance"
+            aria-label="Impostazioni di lettura"
+            aria-expanded={panel === 'appearance' ? 'true' : 'false'}
+            onClick={() => setPanel('appearance')}
+          >
+            <span class="type-symbol" aria-hidden="true">
+              Aa
+            </span>
+            <span class="tool-caption">Aspetto</span>
+          </button>
+          <button
+            type="button"
+            class="reader-tool"
+            data-testid="reader-notes"
+            aria-expanded={notesOpen ? 'true' : 'false'}
+            onClick={() => (notesOpen ? closeNotes() : openNotes())}
+          >
+            <span class="tool-symbol" aria-hidden="true">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+              >
+                <path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" />
+              </svg>
+            </span>
+            <span>
+              Annotazioni <span class="note-count">{annotations.data.annotations.length}</span>
+            </span>
+          </button>
+        </nav>
+        <button
+          type="button"
+          class="reader-icon"
+          data-testid="reader-more"
+          aria-label="Menu documento e file"
+          aria-expanded={panel === 'files' ? 'true' : 'false'}
+          onClick={() => setPanel('files')}
+        >
+          ⋯
+        </button>
+      </header>
       <div class="flow-heading">
         <div>
           <p class="eyebrow">LETTURA E ANNOTAZIONI</p>
@@ -375,6 +533,20 @@ export function FluidReader({
           Pagina {current} di {reader.pageCount}
         </p>
       </div>
+      {(annotations.state.conflict ||
+        annotations.state.status === 'error' ||
+        cacheNeedsAttention(annotations.state)) && (
+        <div class="reader-alert" role="status" data-testid="reader-persistence-warning">
+          <span>
+            {annotations.state.conflict
+              ? 'Conflitto: scrittura bloccata. Conserva entrambe le copie.'
+              : 'Il lavoro richiede attenzione. Conserva il JSON aggiornato.'}
+          </span>
+          <button type="button" onClick={() => setPanel('files')}>
+            {annotations.state.conflict ? 'Risolvi' : 'Dettagli e download'}
+          </button>
+        </div>
+      )}
       <form
         class="flow-toolbar"
         onSubmit={(event) => {
@@ -386,9 +558,10 @@ export function FluidReader({
           class="secondary-button"
           type="button"
           disabled={current === 1}
+          aria-label="Precedente"
           onClick={() => void load(current - 1, 'jump')}
         >
-          Precedente
+          <span aria-hidden="true">← </span>Precedente
         </button>
         <label for="flow-page">Pagina</label>
         <input
@@ -404,6 +577,7 @@ export function FluidReader({
             setDraft(event.currentTarget.value);
           }}
         />
+        <span class="page-total">di {reader.pageCount}</span>
         <button class="secondary-button" type="submit">
           Vai
         </button>
@@ -415,120 +589,201 @@ export function FluidReader({
         >
           Successiva
         </button>
+        <progress value={current} max={reader.pageCount} aria-label="Avanzamento nel documento" />
         <button
-          class="secondary-button"
           type="button"
-          data-testid="flow-original"
-          aria-pressed={original ? 'true' : 'false'}
-          onClick={() => {
-            if (!original) {
-              showOriginal();
-            } else {
-              setOriginal(false);
-              if (!pages.some((p) => p.page === current)) void load(current, 'jump', true);
-            }
-          }}
+          class="reader-focus"
+          data-testid="reader-focus"
+          onClick={() => changeFocus(true)}
         >
-          {original ? 'Torna alla lettura' : 'Originale'}
+          Solo lettura
         </button>
-        <a
-          class="text-link"
-          href={`${originalUrl}#page=${current}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Apri PDF originale
-        </a>
       </form>
-      <details class="reading-settings">
-        <summary>Impostazioni di lettura</summary>
-        <div class="reading-controls">
-          <label>
-            Carattere
-            <select
-              data-testid="reading-font"
+      <ReaderDialog
+        open={panel === 'appearance'}
+        title="Impostazioni di lettura"
+        id="appearance-panel"
+        onClose={() => setPanel(undefined)}
+      >
+        <div class="reading-settings">
+          <div class="reading-controls">
+            <label>
+              Carattere
+              <select
+                data-testid="reading-font"
+                disabled={!ready}
+                value={preferences.font}
+                onChange={(event) =>
+                  changePreferences({ font: event.currentTarget.value as 'serif' | 'sans' })
+                }
+              >
+                <option value="serif">Con grazie</option>
+                <option value="sans">Senza grazie</option>
+              </select>
+            </label>
+            <label>
+              Dimensione · {preferences.size} px
+              <input
+                data-testid="reading-size"
+                disabled={!ready}
+                type="range"
+                min="14"
+                max="32"
+                step="1"
+                value={preferences.size}
+                onInput={(event) => changePreferences({ size: Number(event.currentTarget.value) })}
+              />
+            </label>
+            <label>
+              Interlinea · {preferences.lineHeight}
+              <input
+                data-testid="reading-line"
+                disabled={!ready}
+                type="range"
+                min="1.3"
+                max="2.2"
+                step=".1"
+                value={preferences.lineHeight}
+                onInput={(event) =>
+                  changePreferences({ lineHeight: Number(event.currentTarget.value) })
+                }
+              />
+            </label>
+            <label>
+              Margini · {preferences.margin} px
+              <input
+                data-testid="reading-margin"
+                disabled={!ready}
+                type="range"
+                min="8"
+                max="48"
+                step="4"
+                value={preferences.margin}
+                onInput={(event) =>
+                  changePreferences({ margin: Number(event.currentTarget.value) })
+                }
+              />
+            </label>
+            <label>
+              Tema
+              <select
+                data-testid="reading-theme"
+                disabled={!ready}
+                value={preferences.theme}
+                onChange={(event) =>
+                  changePreferences({
+                    theme: event.currentTarget.value as 'light' | 'dark' | 'sepia',
+                  })
+                }
+              >
+                <option value="light">Chiaro</option>
+                <option value="dark">Scuro</option>
+                <option value="sepia">Seppia</option>
+              </select>
+            </label>
+            <button
+              class="secondary-button"
               disabled={!ready}
-              value={preferences.font}
-              onChange={(event) =>
-                changePreferences({ font: event.currentTarget.value as 'serif' | 'sans' })
-              }
+              type="button"
+              onClick={() => changePreferences(defaultPreferences)}
             >
-              <option value="serif">Con grazie</option>
-              <option value="sans">Senza grazie</option>
-            </select>
-          </label>
-          <label>
-            Dimensione · {preferences.size} px
-            <input
-              data-testid="reading-size"
-              disabled={!ready}
-              type="range"
-              min="14"
-              max="32"
-              step="1"
-              value={preferences.size}
-              onInput={(event) => changePreferences({ size: Number(event.currentTarget.value) })}
-            />
-          </label>
-          <label>
-            Interlinea · {preferences.lineHeight}
-            <input
-              data-testid="reading-line"
-              disabled={!ready}
-              type="range"
-              min="1.3"
-              max="2.2"
-              step=".1"
-              value={preferences.lineHeight}
-              onInput={(event) =>
-                changePreferences({ lineHeight: Number(event.currentTarget.value) })
-              }
-            />
-          </label>
-          <label>
-            Margini · {preferences.margin} px
-            <input
-              data-testid="reading-margin"
-              disabled={!ready}
-              type="range"
-              min="8"
-              max="48"
-              step="4"
-              value={preferences.margin}
-              onInput={(event) => changePreferences({ margin: Number(event.currentTarget.value) })}
-            />
-          </label>
-          <label>
-            Tema
-            <select
-              data-testid="reading-theme"
-              disabled={!ready}
-              value={preferences.theme}
-              onChange={(event) =>
-                changePreferences({
-                  theme: event.currentTarget.value as 'light' | 'dark' | 'sepia',
-                })
-              }
-            >
-              <option value="light">Chiaro</option>
-              <option value="dark">Scuro</option>
-              <option value="sepia">Seppia</option>
-            </select>
-          </label>
+              Ripristina preferenze
+            </button>
+          </div>
+          <p class="small-note" role="status" data-testid="preferences-status">
+            {storage} Non vengono esportate nel JSON.
+          </p>
+        </div>
+      </ReaderDialog>
+      <ReaderDialog
+        open={panel === 'files'}
+        title="Documento e file"
+        id="file-panel"
+        onClose={() => setPanel(undefined)}
+      >
+        <p class="menu-document-name">{fileName}</p>
+        <div class="reader-menu-actions">
           <button
             class="secondary-button"
-            disabled={!ready}
-            type="button"
-            onClick={() => changePreferences(defaultPreferences)}
+            onClick={() => {
+              setPanel(undefined);
+              onOpenPdf();
+            }}
           >
-            Ripristina preferenze
+            Cambia PDF
+          </button>
+          <button
+            class="secondary-button"
+            onClick={() => {
+              setPanel(undefined);
+              onStandardPdf();
+            }}
+          >
+            Usa selettore standard
+          </button>
+          <a
+            class="text-link"
+            href={`${originalUrl}#page=${current}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Apri PDF originale
+          </a>
+          <button
+            class="secondary-button"
+            onClick={() => {
+              setPanel(undefined);
+              changeFocus(true);
+            }}
+          >
+            Solo lettura
           </button>
         </div>
-        <p class="small-note" role="status" data-testid="preferences-status">
-          {storage} Non vengono esportate nel JSON.
+        <AnnotationPanel files />
+        <details class="document-info">
+          <summary>Dettagli del documento</summary>
+          <p>
+            {annotations.data.document.size.toLocaleString('it-IT')} byte · PDF originale invariato
+          </p>
+          <p class="hash">{annotations.data.document.sha256}</p>
+          <p>
+            Ricostruzione euristica: layout semplici, nessun OCR. Nessun file viene inviato a un
+            server.
+          </p>
+          <p>
+            Pagine {start}–{end} nel flusso · {pages.length}/5 renderizzate.
+          </p>
+          <button
+            class="secondary-button"
+            onClick={() => {
+              setPanel(undefined);
+              onTechnical();
+            }}
+          >
+            Vista tecnica
+          </button>
+        </details>
+        <p class="reader-version">
+          Fluido v{version} · Fase 6 · <a href="https://opensource.org/licenses/MIT">MIT</a> ·{' '}
+          <a href="./pdfjs/LICENSE" download="PDF.js-LICENSE.txt">
+            Licenza PDF.js
+          </a>
+          {' · '}Font OFL:{' '}
+          <a href="./fonts/OFL-source-sans-3.txt" download>
+            Sans
+          </a>
+          ,{' '}
+          <a href="./fonts/OFL-source-serif-4.txt" download>
+            Serif
+          </a>
         </p>
-      </details>
-      <p class="small-note" role="status" data-testid="flow-status">
+      </ReaderDialog>
+      <p
+        class="small-note flow-status"
+        role="status"
+        data-testid="flow-status"
+        hidden={!loading && !error}
+      >
         {loading
           ? 'Caricamento pagina…'
           : error
@@ -676,12 +931,34 @@ export function FluidReader({
               ))}
           </div>
         </div>
-        <AnnotationPanel />
+        {mobile ? (
+          <ReaderDialog
+            open={notesOpen}
+            title="Annotazioni"
+            id="notes-panel"
+            className="notes-dialog"
+            onClose={closeNotes}
+          >
+            <AnnotationPanel open={notesOpen} onClose={closeNotes} onNavigate={closeNotes} />
+          </ReaderDialog>
+        ) : (
+          <AnnotationPanel open={notesOpen} onClose={closeNotes} />
+        )}
       </div>
       <p class="small-note flow-footnote">
         La lettura carica pagine su scorrimento o richiesta, non l’intero testo. Ricostruzione
         euristica; annotazioni e punto di lettura vanno conservati nel JSON separato.
       </p>
+      {focus && (
+        <button
+          type="button"
+          class="exit-focus"
+          data-testid="reader-exit-focus"
+          onClick={() => changeFocus(false)}
+        >
+          Esci da Solo lettura <span aria-hidden="true">↗</span>
+        </button>
+      )}
     </section>
   );
 }
