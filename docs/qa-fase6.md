@@ -1,7 +1,7 @@
 # QA della Fase 6
 
-Versione: `0.5.0-layout.1`. Data: 23/10/2026.
-Stato: regressione locale superata; pubblicazione e verifica Azure in corso.
+Versione: `0.5.0-layout.1`. Release: 23/10/2026. Rapporto aggiornato: 26/10/2026.
+Stato: integrazione pubblicata; regressione locale e Azure superata.
 
 ## Risultati locali
 
@@ -11,6 +11,22 @@ Stato: regressione locale superata; pubblicazione e verifica Azure in corso.
   nell'esecuzione completa finale su Chromium, Firefox e WebKit (144 casi).
 - Le sei esclusioni riguardano tre scenari con handle OPFS su Firefox e WebKit;
   non costituiscono una verifica dei selettori del sistema operativo.
+
+## Rilascio e verifica Azure
+
+- Commit applicativo: [aaf8257](https://github.com/andrearicossa/MyPdfReader/commit/aaf8257b0986236950efac6d3b174244c8405c2e).
+- [CI completata con successo](https://github.com/andrearicossa/MyPdfReader/actions/runs/40028614255):
+  qualità e suite E2E.
+- [Deploy Azure completato con successo](https://github.com/andrearicossa/MyPdfReader/actions/runs/40028614356).
+- Suite completa sull'URL Azure, tre motori: 138 superati, sei esclusioni previste,
+  nessun fallimento nell'esecuzione finale (5,3 minuti).
+- Nuovo contesto browser: footer `0.5.0-layout.1`, apertura del PDF sintetico,
+  selezione reale nel box, evidenziazione verde e nota, download JSON verificato
+  con la nota presente, apertura/chiusura del pannello mobile e Aspetto.
+- Vista Originale con canvas 1190×1684, ritorno alla lettura e link al PDF
+  originale attivato in una nuova scheda `blob:`; nessun `pageerror`.
+- Immagini Azure desktop, mobile e note mobile in `evidence/phase6/`.
+  Controllo visivo e larghezza 375 px senza overflow orizzontale.
 
 ## Copertura
 
@@ -70,7 +86,14 @@ Non rappresentano il PDF dell'utente né una prova su hardware fisico.
 - Nessun OCR, supporto generale a colonne o layout complessi, cloud sync o
   collegamento Drive/OneDrive.
 - Il prototipo UI 01 rimane separato dall'applicazione. Il contenitore di
-  anteprima non è il riferimento per il worker: verificare su Azure.
+  anteprima aggiornato mostra la release, ma il worker PDF viene bloccato
+  dall'origine opaca del proxy. Il permalink pubblico presenta inoltre una
+  verifica Cloudflare al browser automatizzato: usare Azure per provare i PDF.
+- La sincronizzazione dei file del Progetto ha restituito 403: i documenti
+  aggiornati sono pubblicati nel repository, non nella copia del Progetto.
+- Le Actions segnalano avvisi non bloccanti su Node 20 delle action v4,
+  migrazione del runner e input Azure `skip_api_build`; non impediscono il
+  deploy riuscito. Aggiornamento delle action rimandato a manutenzione dedicata.
 
 ## Riferimenti
 

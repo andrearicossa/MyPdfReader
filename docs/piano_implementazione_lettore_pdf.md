@@ -1,6 +1,6 @@
 # Piano di implementazione – Lettore PDF in modalità fluida (MVP)
 
-Stato: **Layout desktop/mobile UI 01 integrato nella Fase 6; collaudo di rilascio in corso; gate dispositivi reali aperto** · Aggiornamento: 23/10/2026
+Stato: **Layout desktop/mobile UI 01 integrato e pubblicato su Azure nella Fase 6; regressione superata; gate dispositivi reali aperto** · Aggiornamento: 26/10/2026
 Riferimenti: `analisi_tecnica_lettore_pdf.md` (con AC-01…AC-32 e RF-01…RF-10), `decisioni_analisi_tecnica_lettore_pdf.md`
 Assunzioni approvate: D7 preferenze **globali per dispositivo**; D8 licenza **MIT**. Tutte le decisioni aperte sono chiuse.
 
@@ -230,7 +230,11 @@ Il redesign non viene anticipato nella release della persistenza.
 
 #### Integrazione UI 01
 
-**Implementata (`0.5.0-layout.1`), verifiche di rilascio in corso.**
+**Implementata e pubblicata (`0.5.0-layout.1`), regressione locale e Azure superata.**
+
+113 test unitari e 138 test browser superati; sei esclusioni OPFS previste.
+La suite browser completa è stata ripetuta sull'applicazione Azure con lo stesso
+esito. CI e deploy riusciti; restano aperti hardware fisico, picker OS e PDF reale.
 Barra documento, note laterali desktop / modali mobile, Aspetto e menu file
 sovrapposti, navigazione inferiore e Solo lettura. Font self-hosted e preferenza
 note globale per dispositivo; nessuna modifica al JSON v1.

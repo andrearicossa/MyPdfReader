@@ -1,6 +1,8 @@
 # ADR-007: integrazione del layout UI 01
 
-Data: 23/10/2026. Stato: implementato, collaudo di rilascio in corso.
+Data: 23/10/2026. Aggiornamento: 26/10/2026.
+Stato: implementato e pubblicato; regressione locale e Azure superata.
+Restano aperte le verifiche su dispositivi fisici e PDF originale dell'utente.
 
 ## Decisione
 

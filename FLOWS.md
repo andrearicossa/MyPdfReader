@@ -1,10 +1,16 @@
 # Main flows
 
-## Esito locale Fase 6
+## Esito Fase 6
 
 - Release `0.5.0-layout.1`: formattazione, lint, TypeScript e build superati.
 - 113 test unitari e 138 test browser superati; sei esclusioni OPFS previste
-  su Firefox/WebKit. Pubblicazione e collaudo Azure ancora da registrare.
+  su Firefox/WebKit. Suite completa ripetuta su Azure: 138 superati, sei esclusi.
+- CI e deploy riusciti per `aaf8257`; contesto fresco Azure con apertura PDF,
+  nota nel box, download JSON verificato, pannelli desktop/mobile, Originale
+  e nuova scheda PDF. Nessun `pageerror`, overflow orizzontale o comando primario
+  tagliato nelle viste desktop/mobile esaminate.
+- Anteprima aggiornata nello stesso asset; shell verificata tramite proxy,
+  worker bloccato dall'origine opaca e permalink con verifica Cloudflare.
 - Verificato anche lo zoom figura mobile a 125% e la chiusura del pannello.
 
 ## Fase 6: inventario prima dell'integrazione UI 01
