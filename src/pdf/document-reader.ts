@@ -13,6 +13,7 @@ import {
   type ReadingPage,
 } from '../core/reading-model';
 import { mergeRegions, multiply, transformedRect, type Matrix } from './figures';
+import { readOutline, type OutlineEntry } from './outline';
 import { rectanglePath, segmentFrames } from './frames';
 import { PageCache } from './page-cache';
 
@@ -32,6 +33,14 @@ export class DocumentReader {
   ) {}
   get pageCount() {
     return this.pdf.numPages;
+  }
+
+  private outlineEntries?: Promise<OutlineEntry[]>;
+
+  /** Indice del documento, letto una sola volta per file. Un errore non blocca la lettura. */
+  outline(): Promise<OutlineEntry[]> {
+    this.outlineEntries ??= readOutline(this.pdf).catch(() => []);
+    return this.outlineEntries;
   }
 
   static async open(file: File): Promise<DocumentReader> {

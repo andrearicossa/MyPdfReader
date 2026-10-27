@@ -11,7 +11,7 @@ describe("Shell dell'applicazione (Fase 0, AC-32)", () => {
 
   it('dichiara la fase corrente senza promettere funzioni assenti', () => {
     const html = renderToString(<App />);
-    expect(html).toContain('Fase 6');
+    expect(html).toContain('Fase 7');
     expect(html).toContain('cache locale non sostituisce');
   });
 });

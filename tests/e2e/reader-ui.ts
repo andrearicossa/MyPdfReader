@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
 export async function closePanel(page: Page) {
-  for (const id of ['appearance-panel', 'file-panel', 'notes-panel']) {
+  for (const id of ['appearance-panel', 'file-panel', 'notes-panel', 'index-panel-dialog']) {
     if (await page.getByTestId(id).isVisible())
       await page
         .getByTestId(id)
@@ -24,6 +24,14 @@ export async function openNotes(page: Page) {
   await expect(page.getByTestId('notes-panel')).toHaveCount(mobile ? 1 : 0);
   if ((await page.getByTestId('reader-notes').getAttribute('aria-expanded')) !== 'true')
     await page.getByTestId('reader-notes').click();
+}
+export async function openIndex(page: Page) {
+  await closePanel(page);
+  const mobile = await page.evaluate(() => matchMedia('(max-width: 900px)').matches);
+  if ((await page.getByTestId('reader-index').getAttribute('aria-expanded')) !== 'true')
+    await page.getByTestId('reader-index').click();
+  // Desktop: pannello laterale. Mobile: dialog dedicato.
+  await expect(page.getByTestId(mobile ? 'index-panel-dialog' : 'index-aside')).toBeVisible();
 }
 export async function openAppearance(page: Page) {
   await closePanel(page);

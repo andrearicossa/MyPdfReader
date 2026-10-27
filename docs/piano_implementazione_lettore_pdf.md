@@ -273,6 +273,24 @@ La baseline originaria era di **10–13 settimane** a una persona part-time
 equivalente; le settimane si riferiscono allo sviluppo di un dev umano, non ai
 tempi di esecuzione automatica.
 
+### Fase 7 – Indice di navigazione e contesto
+
+Richiesta dell'utente il 27/10/2026, dopo la verifica positiva del layout Fase 6
+su telefono: un indice sempre a portata di mano per navigare più velocemente il
+documento e avere percezione del contesto. Decisioni in
+[ADR-008](ADR-008-indice.md).
+
+- **Sorgente**: segnalibri del PDF letti una sola volta per documento; fallback
+  sull'elenco pagine a gruppi quando mancano. Nessun titolo inventato dal testo.
+- **UI**: pannello laterale desktop richiudibile con preferenza `indexOpen`,
+  dialog mobile dedicato, barra di contesto sempre visibile durante la lettura.
+- **Onestà del contesto**: la sezione corrente viene dichiarata solo quando la
+  pagina la distingue; altrimenti resta il contesto di pagina.
+- **Compatibilità**: JSON annotazioni v1 invariato, nessuna migrazione; errore
+  di lettura dell'indice non blocca mai il PDF.
+- **Uscita**: suite di regressione completa superata (locale e Azure), gate
+  manuali su dispositivi reali e PDF dell'utente ancora aperti.
+
 ## 5. Tracciabilità verso i criteri di accettazione
 
 | Area dei criteri (analisi)                                      | Fase      | Verifica                                                       |
@@ -289,6 +307,7 @@ tempi di esecuzione automatica.
 | Codice e build disponibili, licenza MIT e dipendenze verificate | Fase 0, 6 | Checklist licenze (AC-32)                                      |
 | Desktop, tablet, telefono                                       | 3, 6      | Playwright viewport + prova manuale su dispositivi             |
 | Revisione UI/UX e layout centrato sulla lettura                 | 6         | Proposta desktop/mobile approvata + verifica dei flussi utente |
+| Indice di navigazione e contesto                                | 7         | Unità su outline + E2E desktop/mobile/fallback, Azure          |
 | Regressioni dopo il cambio di layout                            | 6         | Suite completa + criteri di accettazione e gate manuali        |
 
 Ogni test riporta nel nome l'identificativo del criterio dell'analisi, da AC-01 a AC-32.

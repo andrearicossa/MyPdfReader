@@ -9,6 +9,8 @@ import { resolveAnchor, type ReadingPosition, type ResolvedAnchor } from '../cor
 import { useAnnotations } from './annotations';
 import { AnnotatedText, type PageHighlight } from './AnnotatedText';
 import { AnnotationPanel, AnnotationSelection } from './AnnotationPanel';
+import { IndexPanel } from './IndexPanel';
+import { currentSection, type OutlineEntry } from '../pdf/outline';
 import { selectedAnchor, visiblePosition, scrollToPosition } from './text-selection';
 import { ReaderDialog } from './ReaderDialog';
 import { version } from '../../package.json';
@@ -35,6 +37,8 @@ export function FluidReader({
   const [panel, setPanel] = useState<'files' | 'appearance'>();
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches);
   const [mobileNotes, setMobileNotes] = useState(false);
+  const [mobileIndex, setMobileIndex] = useState(false);
+  const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const [focus, setFocus] = useState(false);
   const [pages, setPages] = useState<ReadingPage[]>([]);
   const [current, setCurrent] = useState(1);
@@ -48,10 +52,14 @@ export function FluidReader({
     setFocus(value);
   };
   const notesOpen = !focus && (mobile ? mobileNotes : preferences.notesOpen);
+  const indexOpen = !focus && (mobile ? mobileIndex : preferences.indexOpen);
+  const contextTitle = currentSection(outline, current);
   const openNotes = () => {
     changeFocus(false);
-    if (mobile) setMobileNotes(true);
-    else {
+    if (mobile) {
+      setMobileIndex(false);
+      setMobileNotes(true);
+    } else {
       if (root.current && !original) targetPosition.current = visiblePosition(root.current, pages);
       update({ notesOpen: true });
     }
@@ -63,12 +71,34 @@ export function FluidReader({
       update({ notesOpen: false });
     }
   };
+  const openIndex = () => {
+    changeFocus(false);
+    if (mobile) {
+      setMobileNotes(false);
+      setMobileIndex(true);
+    } else {
+      if (root.current && !original) targetPosition.current = visiblePosition(root.current, pages);
+      update({ indexOpen: true });
+    }
+  };
+  const closeIndex = () => {
+    if (mobile) setMobileIndex(false);
+    else {
+      if (root.current && !original) targetPosition.current = visiblePosition(root.current, pages);
+      update({ indexOpen: false });
+    }
+  };
+  const goFromIndex = (page: number) => {
+    void load(page, 'jump');
+    if (mobile) closeIndex();
+  };
   useEffect(() => {
     document.documentElement.dataset.reading = 'true';
     const media = window.matchMedia('(max-width: 900px)');
     const changed = () => {
       setMobile(media.matches);
       setMobileNotes(false);
+      setMobileIndex(false);
     };
     media.addEventListener('change', changed);
     return () => {
@@ -101,6 +131,14 @@ export function FluidReader({
   const targetPosition = useRef<ReadingPosition>();
   const focusOnRestore = useRef(false);
   const navigationSeen = useRef(-1);
+  const outlineGeneration = useRef(0);
+  useEffect(() => {
+    const generation = ++outlineGeneration.current;
+    setOutline([]);
+    void reader.outline().then((entries) => {
+      if (outlineGeneration.current === generation) setOutline(entries);
+    });
+  }, [reader]);
   const failedRequest = useRef({ number: 1, mode: 'jump' as 'jump' | 'next' | 'previous' });
   const capture = (): Anchor | undefined => {
     const host = root.current;
@@ -429,6 +467,7 @@ export function FluidReader({
       aria-labelledby="fluid-title"
       data-testid="fluid-reader"
       data-notes={notesOpen && !mobile ? 'open' : 'closed'}
+      data-index={indexOpen && !mobile ? 'open' : 'closed'}
     >
       <header class="reader-topbar">
         <span class="reader-wordmark">
@@ -488,6 +527,28 @@ export function FluidReader({
               Aa
             </span>
             <span class="tool-caption">Aspetto</span>
+          </button>
+          <button
+            type="button"
+            class="reader-tool"
+            data-testid="reader-index"
+            aria-label="Indice del documento"
+            aria-expanded={indexOpen ? 'true' : 'false'}
+            onClick={() => (indexOpen ? closeIndex() : openIndex())}
+          >
+            <span class="tool-symbol" aria-hidden="true">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+              >
+                <path d="M4 6h16M4 12h16M4 18h10" />
+              </svg>
+            </span>
+            <span class="tool-caption">Indice</span>
           </button>
           <button
             type="button"
@@ -554,6 +615,9 @@ export function FluidReader({
           void load(Number(draft), 'jump');
         }}
       >
+        <p class="flow-context" data-testid="reader-context" hidden={!contextTitle}>
+          {contextTitle}
+        </p>
         <button
           class="secondary-button"
           type="button"
@@ -764,7 +828,7 @@ export function FluidReader({
           </button>
         </details>
         <p class="reader-version">
-          Fluido v{version} · Fase 6 · <a href="https://opensource.org/licenses/MIT">MIT</a> ·{' '}
+          Fluido v{version} · Fase 7 · <a href="https://opensource.org/licenses/MIT">MIT</a> ·{' '}
           <a href="./pdfjs/LICENSE" download="PDF.js-LICENSE.txt">
             Licenza PDF.js
           </a>
@@ -817,6 +881,34 @@ export function FluidReader({
         </p>
       )}
       <div class="annotated-layout">
+        {!mobile && (
+          <aside
+            class="index-aside"
+            aria-label="Indice del documento"
+            data-testid="index-aside"
+            hidden={!indexOpen}
+          >
+            <div class="reader-panel-heading">
+              <h2>Indice</h2>
+              <button
+                type="button"
+                class="reader-icon"
+                aria-label="Chiudi indice"
+                onClick={closeIndex}
+              >
+                ×
+              </button>
+            </div>
+            <div class="index-content">
+              <IndexPanel
+                entries={outline}
+                pageCount={reader.pageCount}
+                currentPage={current}
+                onGo={goFromIndex}
+              />
+            </div>
+          </aside>
+        )}
         <div class="annotated-main">
           {!original && <AnnotationSelection />}
           {original && (
@@ -931,6 +1023,22 @@ export function FluidReader({
               ))}
           </div>
         </div>
+        {mobile ? (
+          <ReaderDialog
+            open={indexOpen}
+            title="Indice"
+            id="index-panel-dialog"
+            className="index-dialog"
+            onClose={closeIndex}
+          >
+            <IndexPanel
+              entries={outline}
+              pageCount={reader.pageCount}
+              currentPage={current}
+              onGo={goFromIndex}
+            />
+          </ReaderDialog>
+        ) : null}
         {mobile ? (
           <ReaderDialog
             open={notesOpen}

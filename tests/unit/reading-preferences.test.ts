@@ -20,6 +20,7 @@ describe('preferenze globali e finestra fluida', () => {
       font: 'sans',
       theme: 'sepia',
       notesOpen: true,
+      indexOpen: false,
     });
     expect(normalizePreferences({ size: NaN, lineHeight: Infinity, margin: '24' })).toEqual(
       defaultPreferences,
@@ -29,6 +30,11 @@ describe('preferenze globali e finestra fluida', () => {
       lineHeight: 2.2,
       margin: 8,
     });
+  });
+  it('conserva indexOpen retrocompatibile e rifiuta valori non booleani', () => {
+    expect(normalizePreferences({ indexOpen: true })).toMatchObject({ indexOpen: true });
+    expect(normalizePreferences({ indexOpen: 1 })).toMatchObject({ indexOpen: false });
+    expect(normalizePreferences({})).toMatchObject({ indexOpen: false, notesOpen: true });
   });
   it('non modifica i dati ricevuti e arrotonda il modello', () => {
     const original = { size: 21.4, lineHeight: 1.87, margin: 21.8 };

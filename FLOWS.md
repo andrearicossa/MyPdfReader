@@ -1,5 +1,14 @@
 # Main flows
 
+## Esito Fase 7
+
+- Release `0.6.0-index.1`: indice del documento e barra di contesto.
+- 124 test unitari e 156 test browser superati; sei esclusioni OPFS previste
+  su Firefox/WebKit. Pubblicazione e collaudo Azure da registrare dopo il deploy.
+- Verificato desktop (pannello laterale, salto, posizione conservata, convivenza
+  con le note), mobile (dialog, chiusura al salto, nessuna sovrapposizione),
+  fallback senza sommario e contesto onesto sulle pagine ambigue.
+
 ## Esito Fase 6
 
 - Release `0.5.0-layout.1`: formattazione, lint, TypeScript e build superati.

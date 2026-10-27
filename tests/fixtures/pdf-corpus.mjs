@@ -2,7 +2,7 @@
  * Corpus sintetico riproducibile, MIT. PDF reali con xref e stream non compressi.
  * Senza dipendenze di generazione; nessun documento o dato personale.
  */
-export function makePdf(pages, { rotation = 0 } = {}) {
+export function makePdf(pages, { rotation = 0, outline } = {}) {
   const objects = [];
   const put = (n, value) => {
     objects[n] = Buffer.isBuffer(value) ? value : Buffer.from(value, 'latin1');
@@ -35,6 +35,42 @@ export function makePdf(pages, { rotation = 0 } = {}) {
     );
     put(6 + i * 2, stream('', content));
   });
+  if (outline) {
+    const esc = (value) =>
+      String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    let next = 5 + pages.length * 2;
+    const rootNum = next++;
+    const build = (list, parentNum) => {
+      const nums = list.map(() => next++);
+      let descendants = 0;
+      list.forEach((item, i) => {
+        const num = nums[i];
+        const childInfo = item.children?.length ? build(item.children, num) : null;
+        descendants += childInfo ? childInfo.descendants : 0;
+        put(
+          num,
+          `<</Title (${esc(item.title)}) /Parent ${parentNum} 0 R` +
+            (nums[i - 1] !== undefined ? ` /Prev ${nums[i - 1]} 0 R` : '') +
+            (nums[i + 1] !== undefined ? ` /Next ${nums[i + 1]} 0 R` : '') +
+            (childInfo
+              ? ` /First ${childInfo.first} 0 R /Last ${childInfo.last} 0 R /Count ${childInfo.descendants}`
+              : '') +
+            ` /Dest [${5 + (item.page - 1) * 2} 0 R /XYZ null null null]>>`,
+        );
+      });
+      return {
+        first: nums[0],
+        last: nums[nums.length - 1],
+        descendants: list.length + descendants,
+      };
+    };
+    const info = build(outline, rootNum);
+    put(
+      rootNum,
+      `<</Type /Outlines /First ${info.first} 0 R /Last ${info.last} 0 R /Count ${info.descendants}>>`,
+    );
+    put(1, `<</Type /Catalog /Pages 2 0 R /Outlines ${rootNum} 0 R>>`);
+  }
   const parts = [Buffer.from('%PDF-1.7\n%Fluido\n')];
   const offsets = [0];
   let length = parts[0].length;
@@ -84,6 +120,37 @@ export function simplePdf() {
     ),
   );
 }
+/** Come simplePdf, con sommario interno (segnalibri) e una sottosezione. */
+export function outlinedPdf() {
+  return makePdf(
+    [0, 1, 2].map(
+      (i) =>
+        text('Fluido | Documento con indice', 52, 810, 9) +
+        text(`Pagina ${i + 1}`, 270, 24, 9) +
+        text(i === 0 ? 'Il piacere della lettura' : `Capitolo ${i + 1}`, 52, 750, 24) +
+        text('Questa pagina contiene un testo semplice e una parola ripro-', 52, 710) +
+        text('duzione che prosegue nella riga successiva.', 52, 694) +
+        text('Un nuovo paragrafo conserva il riferimento alla pagina originale.', 52, 654),
+    ),
+    {
+      outline: [
+        { title: 'Capitolo 1', page: 1 },
+        {
+          title: 'Capitolo 2',
+          page: 2,
+          children: [{ title: 'Sottosezione 2.1', page: 2 }],
+        },
+        { title: 'Capitolo 3', page: 3 },
+      ],
+    },
+  );
+}
+
+/** Come simplePdf, senza segnalibri: verifica il fallback sull'elenco pagine. */
+export function noOutlinePdf() {
+  return simplePdf();
+}
+
 export function columnsPdf() {
   return makePdf([
     Array.from(
